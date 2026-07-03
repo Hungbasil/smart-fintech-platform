@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: smart-wealth
+  datasource:
+    url: jdbc:postgresql://localhost:5433/fintech_db
+    username: postgres
+    password: secret123
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
