@@ -8,7 +8,6 @@ import com.fintech.smartwealth.repository.CategoryRepository;
 import com.fintech.smartwealth.repository.TransactionRepository;
 import com.fintech.smartwealth.repository.UserRepository;
 import com.fintech.smartwealth.repository.WalletRepository;
-import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
@@ -51,7 +50,6 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final WalletRepository walletRepository;
     private final CategoryRepository categoryRepository;
     private final TransactionRepository transactionRepository;
-    private final EntityManager entityManager;
 
     @Override
     @Transactional
@@ -93,7 +91,6 @@ public class DatabaseSeeder implements CommandLineRunner {
 
     private int seedUsersAndWallets(Path file) throws IOException {
         Map<UUID, User> users = new LinkedHashMap<>();
-        List<Wallet> wallets = new ArrayList<>();
 
         try (Reader reader = openCsvReader(file);
              CSVParser parser = CSVFormat.DEFAULT.builder()
@@ -108,25 +105,20 @@ public class DatabaseSeeder implements CommandLineRunner {
                 UUID userId = UUID.fromString(col(record, "user_id"));
                 users.computeIfAbsent(userId, id -> {
                     User user = new User();
-                    user.setId(id);
                     user.setFullName("Mock User " + id.toString().substring(0, 8));
                     user.setEmail("user-" + id + "@seed.local");
                     user.setPassword("seed123");
-                    return user;
+                    return userRepository.save(user);
                 });
 
                 Wallet wallet = new Wallet();
-                wallet.setId(UUID.fromString(col(record, "id", "wallet_id")));
                 wallet.setName(col(record, "name"));
                 wallet.setBalance(BigDecimal.ZERO);
                 wallet.setUser(users.get(userId));
-                wallets.add(wallet);
+                walletRepository.save(wallet);
             }
         }
 
-        users.values().forEach(entityManager::persist);
-        wallets.forEach(entityManager::persist);
-        entityManager.flush();
         return users.size();
     }
 
