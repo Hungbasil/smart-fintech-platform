@@ -1,7 +1,9 @@
 package com.fintech.smartwealth.controller;
 
-import com.fintech.smartwealth.entity.Wallet;
+import com.fintech.smartwealth.dto.CreateWalletRequest;
+import com.fintech.smartwealth.dto.WalletResponse;
 import com.fintech.smartwealth.service.WalletService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -17,24 +19,19 @@ public class WalletController {
     private final WalletService walletService;
 
     @GetMapping
-    public List<Wallet> findAll() {
+    public List<WalletResponse> findAll() {
         return walletService.findAll();
     }
 
     @GetMapping("/{id}")
-    public Wallet findById(@PathVariable UUID id) {
+    public WalletResponse findById(@PathVariable UUID id) {
         return walletService.findById(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Wallet create(@RequestBody Wallet wallet) {
-        return walletService.create(wallet);
-    }
-
-    @PutMapping("/{id}")
-    public Wallet update(@PathVariable UUID id, @RequestBody Wallet wallet) {
-        return walletService.update(id, wallet);
+    public WalletResponse create(@Valid @RequestBody CreateWalletRequest request) {
+        return walletService.create(request);
     }
 
     @DeleteMapping("/{id}")

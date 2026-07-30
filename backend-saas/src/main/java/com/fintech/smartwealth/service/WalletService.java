@@ -1,6 +1,10 @@
 package com.fintech.smartwealth.service;
 
+import com.fintech.smartwealth.dto.CreateWalletRequest;
+import com.fintech.smartwealth.dto.WalletResponse;
+import com.fintech.smartwealth.entity.User;
 import com.fintech.smartwealth.entity.Wallet;
+import com.fintech.smartwealth.repository.UserRepository;
 import com.fintech.smartwealth.repository.WalletRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,26 +19,30 @@ import java.util.UUID;
 public class WalletService {
 
     private final WalletRepository walletRepository;
+    private final UserRepository userRepository;
 
-    public List<Wallet> findAll() {
-        return walletRepository.findAll();
+    public List<WalletResponse> findAll() {
+        return walletRepository.findAll().stream()
+                .map(this::toResponse)
+                .toList();
     }
 
-    public Wallet findById(UUID id) {
-        return walletRepository.findById(id)
+    public WalletResponse findById(UUID id) {
+        Wallet wallet = walletRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found"));
+        return toResponse(wallet);
     }
 
-    public Wallet create(Wallet wallet) {
-        return walletRepository.save(wallet);
-    }
+    public WalletResponse create(CreateWalletRequest request) {
+        User user = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-    public Wallet update(UUID id, Wallet wallet) {
-        Wallet existing = findById(id);
-        existing.setName(wallet.getName());
-        existing.setBalance(wallet.getBalance());
-        existing.setUser(wallet.getUser());
-        return walletRepository.save(existing);
+        Wallet wallet = new Wallet();
+        wallet.setName(request.getName());
+        wallet.setBalance(request.getBalance());
+        wallet.setUser(user);
+
+        return toResponse(walletRepository.save(wallet));
     }
 
     public void delete(UUID id) {
@@ -42,5 +50,9 @@ public class WalletService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found");
         }
         walletRepository.deleteById(id);
+    }
+
+    private WalletResponse toResponse(Wallet wallet) {
+        return new WalletResponse(wallet.getId(), wallet.getName(), wallet.getBalance(), wallet.getUser().getId());
     }
 }
