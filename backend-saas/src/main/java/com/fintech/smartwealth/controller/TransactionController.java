@@ -1,7 +1,9 @@
 package com.fintech.smartwealth.controller;
 
-import com.fintech.smartwealth.entity.Transaction;
+import com.fintech.smartwealth.dto.CreateTransactionRequest;
+import com.fintech.smartwealth.dto.TransactionResponse;
 import com.fintech.smartwealth.service.TransactionService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -18,12 +20,12 @@ public class TransactionController {
     private final TransactionService transactionService;
 
     @GetMapping
-    public List<Transaction> findAll() {
+    public List<TransactionResponse> findAll() {
         return transactionService.findAll();
     }
 
     @GetMapping("/{id}")
-    public Transaction findById(@PathVariable UUID id) {
+    public TransactionResponse findById(@PathVariable UUID id) {
         return transactionService.findById(id);
     }
 
@@ -34,13 +36,8 @@ public class TransactionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Transaction create(@RequestBody Transaction transaction) {
-        return transactionService.create(transaction);
-    }
-
-    @PutMapping("/{id}")
-    public Transaction update(@PathVariable UUID id, @RequestBody Transaction transaction) {
-        return transactionService.update(id, transaction);
+    public TransactionResponse create(@Valid @RequestBody CreateTransactionRequest request) {
+        return transactionService.create(request);
     }
 
     @DeleteMapping("/{id}")

@@ -1,8 +1,11 @@
 package com.fintech.smartwealth.service;
 
+import com.fintech.smartwealth.dto.CreateTransactionRequest;
+import com.fintech.smartwealth.dto.TransactionResponse;
 import com.fintech.smartwealth.entity.Category;
 import com.fintech.smartwealth.entity.Transaction;
 import com.fintech.smartwealth.entity.Wallet;
+import com.fintech.smartwealth.repository.CategoryRepository;
 import com.fintech.smartwealth.repository.TransactionRepository;
 import com.fintech.smartwealth.repository.WalletRepository;
 import org.junit.jupiter.api.Test;
@@ -29,6 +32,9 @@ class TransactionServiceTest {
     @Mock
     private WalletRepository walletRepository;
 
+    @Mock
+    private CategoryRepository categoryRepository;
+
     @InjectMocks
     private TransactionService transactionService;
 
@@ -39,18 +45,26 @@ class TransactionServiceTest {
         wallet.setBalance(new BigDecimal("100.00"));
 
         Category category = new Category();
+        category.setId(UUID.randomUUID());
         category.setType("EXPENSE");
 
-        Transaction transaction = new Transaction();
-        transaction.setAmount(new BigDecimal("25.00"));
-        transaction.setWallet(wallet);
-        transaction.setCategory(category);
+        CreateTransactionRequest request = new CreateTransactionRequest();
+        request.setAmount(new BigDecimal("25.00"));
+        request.setDescription("Lunch");
+        request.setTransactionDate(java.time.LocalDateTime.now());
+        request.setWalletId(wallet.getId());
+        request.setCategoryId(category.getId());
 
         when(walletRepository.findById(wallet.getId())).thenReturn(Optional.of(wallet));
-        when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(categoryRepository.findById(category.getId())).thenReturn(Optional.of(category));
+        when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
+            Transaction saved = invocation.getArgument(0);
+            saved.setId(UUID.randomUUID());
+            return saved;
+        });
         when(walletRepository.save(any(Wallet.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Transaction saved = transactionService.create(transaction);
+        TransactionResponse saved = transactionService.create(request);
 
         assertThat(saved.getAmount()).isEqualByComparingTo("25.00");
         assertThat(wallet.getBalance()).isEqualByComparingTo("75.00");

@@ -1,7 +1,11 @@
 package com.fintech.smartwealth.service;
 
+import com.fintech.smartwealth.dto.CreateTransactionRequest;
+import com.fintech.smartwealth.dto.TransactionResponse;
+import com.fintech.smartwealth.entity.Category;
 import com.fintech.smartwealth.entity.Transaction;
 import com.fintech.smartwealth.entity.Wallet;
+import com.fintech.smartwealth.repository.CategoryRepository;
 import com.fintech.smartwealth.repository.TransactionRepository;
 import com.fintech.smartwealth.repository.WalletRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,20 +24,33 @@ public class TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final WalletRepository walletRepository;
+    private final CategoryRepository categoryRepository;
 
-    public List<Transaction> findAll() {
-        return transactionRepository.findAll();
+    public List<TransactionResponse> findAll() {
+        return transactionRepository.findAll().stream()
+                .map(this::toResponse)
+                .toList();
     }
 
-    public Transaction findById(UUID id) {
-        return transactionRepository.findById(id)
+    public TransactionResponse findById(UUID id) {
+        Transaction transaction = transactionRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found"));
+        return toResponse(transaction);
     }
 
     @Transactional
-    public Transaction create(Transaction transaction) {
-        Wallet wallet = walletRepository.findById(transaction.getWallet().getId())
+    public TransactionResponse create(CreateTransactionRequest request) {
+        Wallet wallet = walletRepository.findById(request.getWalletId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found"));
+        Category category = categoryRepository.findById(request.getCategoryId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
+
+        Transaction transaction = new Transaction();
+        transaction.setAmount(request.getAmount());
+        transaction.setDescription(request.getDescription());
+        transaction.setTransactionDate(request.getTransactionDate());
+        transaction.setWallet(wallet);
+        transaction.setCategory(category);
 
         BigDecimal delta = resolveDelta(transaction);
         BigDecimal updatedBalance = wallet.getBalance().add(delta);
@@ -42,33 +59,8 @@ public class TransactionService {
         }
 
         wallet.setBalance(updatedBalance);
-        transaction.setWallet(wallet);
         walletRepository.save(wallet);
-        return transactionRepository.save(transaction);
-    }
-
-    @Transactional
-    public Transaction update(UUID id, Transaction transaction) {
-        Transaction existing = findById(id);
-        Wallet wallet = walletRepository.findById(transaction.getWallet().getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found"));
-
-        BigDecimal previousDelta = resolveDelta(existing);
-        BigDecimal newDelta = resolveDelta(transaction);
-        BigDecimal balanceAdjustment = newDelta.subtract(previousDelta);
-        BigDecimal updatedBalance = wallet.getBalance().add(balanceAdjustment);
-        if (updatedBalance.compareTo(BigDecimal.ZERO) < 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Wallet balance would become negative");
-        }
-
-        wallet.setBalance(updatedBalance);
-        existing.setAmount(transaction.getAmount());
-        existing.setDescription(transaction.getDescription());
-        existing.setTransactionDate(transaction.getTransactionDate());
-        existing.setWallet(wallet);
-        existing.setCategory(transaction.getCategory());
-        walletRepository.save(wallet);
-        return transactionRepository.save(existing);
+        return toResponse(transactionRepository.save(transaction));
     }
 
     @Transactional
@@ -100,5 +92,16 @@ public class TransactionService {
         return "EXPENSE".equalsIgnoreCase(transaction.getCategory().getType())
                 ? transaction.getAmount().negate()
                 : transaction.getAmount();
+    }
+
+    private TransactionResponse toResponse(Transaction transaction) {
+        return new TransactionResponse(
+                transaction.getId(),
+                transaction.getAmount(),
+                transaction.getDescription(),
+                transaction.getTransactionDate(),
+                transaction.getWallet().getId(),
+                transaction.getCategory().getId()
+        );
     }
 }
