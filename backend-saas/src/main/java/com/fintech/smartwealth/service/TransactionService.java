@@ -2,6 +2,7 @@ package com.fintech.smartwealth.service;
 
 import com.fintech.smartwealth.dto.CreateTransactionRequest;
 import com.fintech.smartwealth.dto.TransactionResponse;
+import com.fintech.smartwealth.dto.UpdateTransactionRequest;
 import com.fintech.smartwealth.entity.Category;
 import com.fintech.smartwealth.entity.Transaction;
 import com.fintech.smartwealth.entity.Wallet;
@@ -9,13 +10,15 @@ import com.fintech.smartwealth.repository.CategoryRepository;
 import com.fintech.smartwealth.repository.TransactionRepository;
 import com.fintech.smartwealth.repository.WalletRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
-import java.util.List;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -26,10 +29,14 @@ public class TransactionService {
     private final WalletRepository walletRepository;
     private final CategoryRepository categoryRepository;
 
-    public List<TransactionResponse> findAll() {
-        return transactionRepository.findAll().stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<TransactionResponse> findAll(UUID walletId,
+                                             UUID categoryId,
+                                             String type,
+                                             LocalDateTime fromDate,
+                                             LocalDateTime toDate,
+                                             Pageable pageable) {
+        return transactionRepository.findAllByFilters(walletId, categoryId, type, fromDate, toDate, pageable)
+                .map(this::toResponse);
     }
 
     public TransactionResponse findById(UUID id) {
@@ -52,7 +59,7 @@ public class TransactionService {
         transaction.setWallet(wallet);
         transaction.setCategory(category);
 
-        BigDecimal delta = resolveDelta(transaction);
+        BigDecimal delta = resolveDelta(transaction.getAmount(), category.getType());
         BigDecimal updatedBalance = wallet.getBalance().add(delta);
         if (updatedBalance.compareTo(BigDecimal.ZERO) < 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Wallet balance would become negative");
@@ -64,6 +71,49 @@ public class TransactionService {
     }
 
     @Transactional
+    public TransactionResponse update(UUID id, UpdateTransactionRequest request) {
+        Transaction existing = transactionRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found"));
+
+        Wallet oldWallet = walletRepository.findById(existing.getWallet().getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found"));
+        Wallet newWallet = walletRepository.findById(request.getWalletId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found"));
+        Category category = categoryRepository.findById(request.getCategoryId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
+
+        BigDecimal oldDelta = resolveDelta(existing.getAmount(), existing.getCategory().getType());
+        BigDecimal newDelta = resolveDelta(request.getAmount(), category.getType());
+
+        if (oldWallet.getId().equals(newWallet.getId())) {
+            BigDecimal updatedBalance = oldWallet.getBalance().subtract(oldDelta).add(newDelta);
+            if (updatedBalance.compareTo(BigDecimal.ZERO) < 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Wallet balance would become negative");
+            }
+            oldWallet.setBalance(updatedBalance);
+            walletRepository.save(oldWallet);
+        } else {
+            BigDecimal oldWalletBalance = oldWallet.getBalance().subtract(oldDelta);
+            BigDecimal newWalletBalance = newWallet.getBalance().add(newDelta);
+            if (oldWalletBalance.compareTo(BigDecimal.ZERO) < 0 || newWalletBalance.compareTo(BigDecimal.ZERO) < 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Wallet balance would become negative");
+            }
+            oldWallet.setBalance(oldWalletBalance);
+            newWallet.setBalance(newWalletBalance);
+            walletRepository.save(oldWallet);
+            walletRepository.save(newWallet);
+        }
+
+        existing.setAmount(request.getAmount());
+        existing.setDescription(request.getDescription());
+        existing.setTransactionDate(request.getTransactionDate());
+        existing.setWallet(newWallet);
+        existing.setCategory(category);
+
+        return toResponse(transactionRepository.save(existing));
+    }
+
+    @Transactional
     public void delete(UUID id) {
         Transaction transaction = transactionRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found"));
@@ -71,7 +121,7 @@ public class TransactionService {
         Wallet wallet = walletRepository.findById(transaction.getWallet().getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found"));
 
-        BigDecimal updatedBalance = wallet.getBalance().subtract(resolveDelta(transaction));
+        BigDecimal updatedBalance = wallet.getBalance().subtract(resolveDelta(transaction.getAmount(), transaction.getCategory().getType()));
         if (updatedBalance.compareTo(BigDecimal.ZERO) < 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Wallet balance would become negative");
         }
@@ -86,12 +136,16 @@ public class TransactionService {
     }
 
     private BigDecimal resolveDelta(Transaction transaction) {
-        if (transaction.getCategory() == null || transaction.getCategory().getType() == null) {
+        return resolveDelta(transaction.getAmount(), transaction.getCategory() == null ? null : transaction.getCategory().getType());
+    }
+
+    private BigDecimal resolveDelta(BigDecimal amount, String categoryType) {
+        if (categoryType == null) {
             return BigDecimal.ZERO;
         }
-        return "EXPENSE".equalsIgnoreCase(transaction.getCategory().getType())
-                ? transaction.getAmount().negate()
-                : transaction.getAmount();
+        return "EXPENSE".equalsIgnoreCase(categoryType)
+                ? amount.negate()
+                : amount;
     }
 
     private TransactionResponse toResponse(Transaction transaction) {
