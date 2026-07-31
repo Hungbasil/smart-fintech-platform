@@ -1,6 +1,6 @@
-import axios, { AxiosInstance } from 'axios';
+import axios, { type AxiosInstance } from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
 
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -10,27 +10,21 @@ const api: AxiosInstance = axios.create({
   },
 });
 
-// Request interceptor
 api.interceptors.request.use(
   (config) => {
-    // Add token to requests if it exists
     const token = localStorage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Handle unauthorized - redirect to login
       localStorage.removeItem('authToken');
       window.location.href = '/login';
     }

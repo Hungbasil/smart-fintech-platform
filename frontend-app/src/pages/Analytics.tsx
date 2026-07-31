@@ -3,26 +3,19 @@ import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis
 import { Card, CardHeader, CardBody } from '../components';
 import api from '../services/api';
 
+interface Transaction {
+  id: string;
+  amount: number;
+  description: string;
+  transactionDate: string;
+  walletId: string;
+  categoryId: string;
+}
+
 export const Analytics: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const categoryData = [
-    { name: 'Food', value: 400, color: '#FF6B6B' },
-    { name: 'Transport', value: 300, color: '#4ECDC4' },
-    { name: 'Entertainment', value: 200, color: '#45B7D1' },
-    { name: 'Utilities', value: 150, color: '#FFA07A' },
-    { name: 'Other', value: 100, color: '#98D8C8' },
-  ];
-
-  const trendData = [
-    { month: 'Jan', spending: 3500, budget: 4000 },
-    { month: 'Feb', spending: 3200, budget: 4000 },
-    { month: 'Mar', spending: 3800, budget: 4000 },
-    { month: 'Apr', spending: 3100, budget: 4000 },
-    { month: 'May', spending: 3600, budget: 4000 },
-    { month: 'Jun', spending: 3400, budget: 4000 },
-  ];
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
 
   useEffect(() => {
     fetchAnalytics();
@@ -31,14 +24,25 @@ export const Analytics: React.FC = () => {
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      // Replace with your actual API endpoint
-      // const response = await api.get('/analytics');
-      setLoading(false);
+      const response = await api.get<Transaction[]>('/transactions');
+      setTransactions(response.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch analytics');
+    } finally {
       setLoading(false);
     }
   };
+
+  const categoryData = [
+    { name: 'Expenses', value: transactions.filter((item) => item.amount < 0).reduce((sum, item) => sum + Math.abs(item.amount), 0), color: '#FF6B6B' },
+    { name: 'Income', value: transactions.filter((item) => item.amount > 0).reduce((sum, item) => sum + item.amount, 0), color: '#4ECDC4' },
+  ];
+
+  const trendData = transactions.slice(0, 6).map((item, index) => ({
+    month: `T${index + 1}`,
+    spending: Math.abs(item.amount),
+    budget: 4000,
+  }));
 
   if (loading) return <div className="p-8">Loading...</div>;
   if (error) return <div className="p-8 text-red-600">Error: {error}</div>;
@@ -50,7 +54,6 @@ export const Analytics: React.FC = () => {
       <h1 className="text-3xl font-bold text-gray-900 mb-8">Analytics</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Spending by Category */}
         <Card>
           <CardHeader>
             <h3 className="text-lg font-semibold text-gray-900">Spending by Category</h3>
@@ -63,7 +66,7 @@ export const Analytics: React.FC = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
@@ -81,7 +84,6 @@ export const Analytics: React.FC = () => {
           </CardBody>
         </Card>
 
-        {/* Spending Trend */}
         <Card>
           <CardHeader>
             <h3 className="text-lg font-semibold text-gray-900">Spending Trend</h3>
@@ -94,28 +96,14 @@ export const Analytics: React.FC = () => {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="spending"
-                  stroke="#FF6B6B"
-                  name="Actual Spending"
-                  strokeWidth={2}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="budget"
-                  stroke="#4ECDC4"
-                  name="Budget"
-                  strokeWidth={2}
-                  strokeDasharray="5 5"
-                />
+                <Line type="monotone" dataKey="spending" stroke="#FF6B6B" name="Actual Spending" strokeWidth={2} />
+                <Line type="monotone" dataKey="budget" stroke="#4ECDC4" name="Budget" strokeWidth={2} strokeDasharray="5 5" />
               </LineChart>
             </ResponsiveContainer>
           </CardBody>
         </Card>
       </div>
 
-      {/* Category Breakdown */}
       <Card className="mt-8">
         <CardHeader>
           <h3 className="text-lg font-semibold text-gray-900">Category Breakdown</h3>
@@ -123,7 +111,7 @@ export const Analytics: React.FC = () => {
         <CardBody>
           <div className="space-y-3">
             {categoryData.map((item) => {
-              const percentage = (item.value / totalSpending) * 100;
+              const percentage = totalSpending > 0 ? (item.value / totalSpending) * 100 : 0;
               return (
                 <div key={item.name}>
                   <div className="flex justify-between mb-1">
@@ -131,10 +119,7 @@ export const Analytics: React.FC = () => {
                     <span className="text-sm font-semibold text-gray-900">${item.value}</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="h-2 rounded-full"
-                      style={{ width: `${percentage}%`, backgroundColor: item.color }}
-                    />
+                    <div className="h-2 rounded-full" style={{ width: `${percentage}%`, backgroundColor: item.color }} />
                   </div>
                 </div>
               );

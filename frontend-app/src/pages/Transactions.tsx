@@ -4,11 +4,11 @@ import api from '../services/api';
 
 interface Transaction {
   id: string;
-  date: string;
-  description: string;
   amount: number;
-  type: 'income' | 'expense';
-  status: 'completed' | 'pending' | 'failed';
+  description: string;
+  transactionDate: string;
+  walletId: string;
+  categoryId: string;
 }
 
 export const Transactions: React.FC = () => {
@@ -23,39 +23,13 @@ export const Transactions: React.FC = () => {
   const fetchTransactions = async () => {
     try {
       setLoading(true);
-      // Replace with your actual API endpoint
-      // const response = await api.get('/transactions');
-      // setTransactions(response.data);
-
-      // Mock data for now
-      setTransactions([
-        { id: '1', date: '2024-06-20', description: 'Salary Deposit', amount: 5000, type: 'income', status: 'completed' },
-        { id: '2', date: '2024-06-19', description: 'Coffee Shop', amount: 5.50, type: 'expense', status: 'completed' },
-        { id: '3', date: '2024-06-18', description: 'Grocery Store', amount: 125.30, type: 'expense', status: 'completed' },
-        { id: '4', date: '2024-06-17', description: 'Gas Station', amount: 45.00, type: 'expense', status: 'pending' },
-      ]);
+      const response = await api.get<Transaction[]>('/transactions');
+      setTransactions(response.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch transactions');
     } finally {
       setLoading(false);
     }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'failed':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getTypeColor = (type: string) => {
-    return type === 'income' ? 'text-green-600' : 'text-red-600';
   };
 
   if (loading) return <div className="p-8">Loading...</div>;
@@ -76,24 +50,20 @@ export const Transactions: React.FC = () => {
                 <TableHeaderCell>Date</TableHeaderCell>
                 <TableHeaderCell>Description</TableHeaderCell>
                 <TableHeaderCell>Amount</TableHeaderCell>
-                <TableHeaderCell>Type</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
+                <TableHeaderCell>Wallet</TableHeaderCell>
+                <TableHeaderCell>Category</TableHeaderCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {transactions.map((transaction) => (
                 <TableRow key={transaction.id}>
-                  <TableCell>{transaction.date}</TableCell>
+                  <TableCell>{transaction.transactionDate}</TableCell>
                   <TableCell>{transaction.description}</TableCell>
-                  <TableCell className={getTypeColor(transaction.type)}>
-                    {transaction.type === 'income' ? '+' : '-'}${transaction.amount.toFixed(2)}
+                  <TableCell className="font-semibold text-gray-900">
+                    ${transaction.amount.toFixed(2)}
                   </TableCell>
-                  <TableCell>{transaction.type}</TableCell>
-                  <TableCell>
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(transaction.status)}`}>
-                      {transaction.status}
-                    </span>
-                  </TableCell>
+                  <TableCell>{transaction.walletId}</TableCell>
+                  <TableCell>{transaction.categoryId}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

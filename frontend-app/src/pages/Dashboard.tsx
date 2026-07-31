@@ -3,6 +3,22 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { Card, CardHeader, CardBody } from '../components';
 import api from '../services/api';
 
+interface Wallet {
+  id: string;
+  name: string;
+  balance: number;
+  userId: string;
+}
+
+interface Transaction {
+  id: string;
+  amount: number;
+  description: string;
+  transactionDate: string;
+  walletId: string;
+  categoryId: string;
+}
+
 interface DashboardData {
   totalBalance: number;
   monthlyTransactions: number;
@@ -14,15 +30,6 @@ export const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const chartData = [
-    { month: 'Jan', income: 4000, expenses: 2400 },
-    { month: 'Feb', income: 3000, expenses: 1398 },
-    { month: 'Mar', income: 2000, expenses: 9800 },
-    { month: 'Apr', income: 2780, expenses: 3908 },
-    { month: 'May', income: 1890, expenses: 4800 },
-    { month: 'Jun', income: 2390, expenses: 3800 },
-  ];
-
   useEffect(() => {
     fetchDashboardData();
   }, []);
@@ -30,14 +37,18 @@ export const Dashboard: React.FC = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      // Replace with your actual API endpoint
-      // const response = await api.get('/dashboard');
-      // setData(response.data);
-      
-      // Mock data for now
+      const [walletsResponse, transactionsResponse] = await Promise.all([
+        api.get<Wallet[]>('/wallets'),
+        api.get<Transaction[]>('/transactions'),
+      ]);
+
+      const wallets = walletsResponse.data;
+      const transactions = transactionsResponse.data;
+      const totalBalance = wallets.reduce((sum, wallet) => sum + wallet.balance, 0);
+
       setData({
-        totalBalance: 25000,
-        monthlyTransactions: 156,
+        totalBalance,
+        monthlyTransactions: transactions.length,
         savingsGoal: 50000,
       });
     } catch (err) {
@@ -47,6 +58,15 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  const chartData = [
+    { month: 'Jan', income: 4000, expenses: 2400 },
+    { month: 'Feb', income: 3000, expenses: 1398 },
+    { month: 'Mar', income: 2000, expenses: 9800 },
+    { month: 'Apr', income: 2780, expenses: 3908 },
+    { month: 'May', income: 1890, expenses: 4800 },
+    { month: 'Jun', income: 2390, expenses: 3800 },
+  ];
+
   if (loading) return <div className="p-8">Loading...</div>;
   if (error) return <div className="p-8 text-red-600">Error: {error}</div>;
 
@@ -54,7 +74,6 @@ export const Dashboard: React.FC = () => {
     <div className="p-8">
       <h1 className="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card>
           <CardHeader>
@@ -84,7 +103,6 @@ export const Dashboard: React.FC = () => {
         </Card>
       </div>
 
-      {/* Chart */}
       <Card>
         <CardHeader>
           <h3 className="text-lg font-semibold text-gray-900">Income vs Expenses</h3>
