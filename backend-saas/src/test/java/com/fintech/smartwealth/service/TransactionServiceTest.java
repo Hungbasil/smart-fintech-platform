@@ -8,6 +8,7 @@ import com.fintech.smartwealth.entity.Wallet;
 import com.fintech.smartwealth.repository.CategoryRepository;
 import com.fintech.smartwealth.repository.TransactionRepository;
 import com.fintech.smartwealth.repository.WalletRepository;
+import com.fintech.smartwealth.security.SecurityUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -35,6 +36,9 @@ class TransactionServiceTest {
     @Mock
     private CategoryRepository categoryRepository;
 
+    @Mock
+    private SecurityUtils securityUtils;
+
     @InjectMocks
     private TransactionService transactionService;
 
@@ -55,8 +59,13 @@ class TransactionServiceTest {
         request.setWalletId(wallet.getId());
         request.setCategoryId(category.getId());
 
+        wallet.setUser(new com.fintech.smartwealth.entity.User());
+        wallet.getUser().setId(UUID.randomUUID());
+
         when(walletRepository.findById(wallet.getId())).thenReturn(Optional.of(wallet));
         when(categoryRepository.findById(category.getId())).thenReturn(Optional.of(category));
+        when(securityUtils.isAdmin()).thenReturn(false);
+        when(securityUtils.getCurrentUserId()).thenReturn(wallet.getUser().getId());
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
             Transaction saved = invocation.getArgument(0);
             saved.setId(UUID.randomUUID());
