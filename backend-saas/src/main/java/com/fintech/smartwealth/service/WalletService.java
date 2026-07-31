@@ -6,6 +6,7 @@ import com.fintech.smartwealth.entity.User;
 import com.fintech.smartwealth.entity.Wallet;
 import com.fintech.smartwealth.repository.UserRepository;
 import com.fintech.smartwealth.repository.WalletRepository;
+import com.fintech.smartwealth.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -20,20 +21,33 @@ public class WalletService {
 
     private final WalletRepository walletRepository;
     private final UserRepository userRepository;
+    private final SecurityUtils securityUtils;
 
     public List<WalletResponse> findAll() {
-        return walletRepository.findAll().stream()
+        if (securityUtils.isAdmin()) {
+            return walletRepository.findAll().stream()
+                    .map(this::toResponse)
+                    .toList();
+        }
+        return walletRepository.findByUserId(securityUtils.getCurrentUserId()).stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     public WalletResponse findById(UUID id) {
-        Wallet wallet = walletRepository.findById(id)
+        if (securityUtils.isAdmin()) {
+            Wallet wallet = walletRepository.findById(id)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found"));
+            return toResponse(wallet);
+        }
+        Wallet wallet = walletRepository.findByIdAndUserId(id, securityUtils.getCurrentUserId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found"));
         return toResponse(wallet);
     }
 
     public WalletResponse create(CreateWalletRequest request) {
+        securityUtils.requireOwnership(request.getUserId());
+
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
@@ -46,9 +60,9 @@ public class WalletService {
     }
 
     public void delete(UUID id) {
-        if (!walletRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found");
-        }
+        Wallet wallet = walletRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found"));
+        securityUtils.requireOwnership(wallet.getUser().getId());
         walletRepository.deleteById(id);
     }
 

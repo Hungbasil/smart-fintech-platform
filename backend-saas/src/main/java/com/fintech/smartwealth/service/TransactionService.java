@@ -9,6 +9,7 @@ import com.fintech.smartwealth.entity.Wallet;
 import com.fintech.smartwealth.repository.CategoryRepository;
 import com.fintech.smartwealth.repository.TransactionRepository;
 import com.fintech.smartwealth.repository.WalletRepository;
+import com.fintech.smartwealth.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +29,7 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final WalletRepository walletRepository;
     private final CategoryRepository categoryRepository;
+    private final SecurityUtils securityUtils;
 
     public Page<TransactionResponse> findAll(UUID walletId,
                                              UUID categoryId,
@@ -35,13 +37,23 @@ public class TransactionService {
                                              LocalDateTime fromDate,
                                              LocalDateTime toDate,
                                              Pageable pageable) {
-        return transactionRepository.findAllByFilters(walletId, categoryId, type, fromDate, toDate, pageable)
+        if (securityUtils.isAdmin()) {
+            return transactionRepository.findAllByFilters(walletId, categoryId, type, fromDate, toDate, pageable)
+                    .map(this::toResponse);
+        }
+        return transactionRepository.findAllByWalletUserIdAndFilters(securityUtils.getCurrentUserId(), walletId, categoryId, type, fromDate, toDate, pageable)
                 .map(this::toResponse);
     }
 
     public TransactionResponse findById(UUID id) {
-        Transaction transaction = transactionRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found"));
+        Transaction transaction;
+        if (securityUtils.isAdmin()) {
+            transaction = transactionRepository.findById(id)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found"));
+        } else {
+            transaction = transactionRepository.findByIdAndWalletUserId(id, securityUtils.getCurrentUserId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found"));
+        }
         return toResponse(transaction);
     }
 
