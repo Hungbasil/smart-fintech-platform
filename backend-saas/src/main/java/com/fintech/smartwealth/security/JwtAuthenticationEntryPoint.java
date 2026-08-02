@@ -1,5 +1,6 @@
 package com.fintech.smartwealth.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -12,6 +13,8 @@ import java.util.Map;
 
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     @Override
     public void commence(HttpServletRequest request,
                          HttpServletResponse response,
@@ -22,6 +25,6 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         body.put("status", HttpServletResponse.SC_UNAUTHORIZED);
         body.put("error", "Unauthorized");
         body.put("message", authException.getMessage());
-        response.getWriter().write(body.toString());
+        objectMapper.writeValue(response.getWriter(), body);
     }
 }

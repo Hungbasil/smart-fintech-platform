@@ -1,5 +1,6 @@
 package com.fintech.smartwealth.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -12,6 +13,8 @@ import java.util.Map;
 
 public class JwtAccessDeniedHandler implements AccessDeniedHandler {
 
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     @Override
     public void handle(HttpServletRequest request,
                        HttpServletResponse response,
@@ -22,6 +25,6 @@ public class JwtAccessDeniedHandler implements AccessDeniedHandler {
         body.put("status", HttpServletResponse.SC_FORBIDDEN);
         body.put("error", "Forbidden");
         body.put("message", accessDeniedException.getMessage());
-        response.getWriter().write(body.toString());
+        objectMapper.writeValue(response.getWriter(), body);
     }
 }
