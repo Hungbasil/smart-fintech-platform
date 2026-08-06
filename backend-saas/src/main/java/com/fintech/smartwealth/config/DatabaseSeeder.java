@@ -112,8 +112,16 @@ public class DatabaseSeeder implements CommandLineRunner {
                 });
 
                 Wallet wallet = new Wallet();
+                String walletId = colOptional(record, "id", "wallet_id");
+                if (walletId != null && !walletId.isBlank()) {
+                    wallet.setId(UUID.fromString(walletId));
+                }
                 wallet.setName(col(record, "name"));
-                wallet.setBalance(BigDecimal.ZERO);
+
+                String balanceValue = colOptional(record, "balance");
+                wallet.setBalance(balanceValue == null || balanceValue.isBlank()
+                        ? BigDecimal.ZERO
+                        : parseAmount(balanceValue));
                 wallet.setUser(users.get(userId));
                 walletRepository.save(wallet);
             }
