@@ -46,9 +46,10 @@ public class WalletService {
     }
 
     public WalletResponse create(CreateWalletRequest request) {
-        securityUtils.requireOwnership(request.getUserId());
+        UUID targetUserId = request.getUserId() != null ? request.getUserId() : securityUtils.getCurrentUserId();
+        securityUtils.requireOwnership(targetUserId);
 
-        User user = userRepository.findById(request.getUserId())
+        User user = userRepository.findById(targetUserId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         Wallet wallet = new Wallet();
