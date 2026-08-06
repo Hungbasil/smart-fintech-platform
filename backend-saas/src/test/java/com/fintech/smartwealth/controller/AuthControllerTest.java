@@ -14,6 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.Locale;
 import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -102,6 +103,39 @@ class AuthControllerTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.error").value("Unauthorized"))
                 .andExpect(jsonPath("$.message").value("Invalid or expired token"));
+    }
+
+    @Test
+    void registerAndLoginShouldNormalizeEmailCaseAndWhitespace() throws Exception {
+        String rawEmail = "  Auth-Trim-" + UUID.randomUUID() + "@Example.COM  ";
+        String normalizedEmail = rawEmail.trim().toLowerCase(Locale.ROOT);
+
+        String registerPayload = """
+                {
+                  "fullName": "Normalized User",
+                  "email": "%s",
+                  "password": "Password123"
+                }
+                """.formatted(rawEmail);
+
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(registerPayload))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.user.email").value(normalizedEmail));
+
+        String loginPayload = """
+                {
+                  "email": "%s",
+                  "password": "Password123"
+                }
+                """.formatted(rawEmail.toUpperCase(Locale.ROOT));
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(loginPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").exists());
     }
 
     @Test

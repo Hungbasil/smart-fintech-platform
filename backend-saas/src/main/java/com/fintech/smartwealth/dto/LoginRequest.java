@@ -3,6 +3,8 @@ package com.fintech.smartwealth.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
+import java.util.Locale;
+
 public class LoginRequest {
 
     @NotBlank(message = "Email is required")
@@ -17,7 +19,7 @@ public class LoginRequest {
     }
 
     public void setEmail(String email) {
-        this.email = email;
+        this.email = email == null ? null : email.trim().toLowerCase(Locale.ROOT);
     }
 
     public String getPassword() {
