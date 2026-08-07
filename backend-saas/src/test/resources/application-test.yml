@@ -8,11 +8,16 @@ spring:
     hibernate:
       ddl-auto: validate
     show-sql: false
+    open-in-view: false
   flyway:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
     baseline-version: 0
+seed:
+  enabled: false
+cors:
+  allowed-origins: http://localhost:5173
 jwt:
   secret: test-secret-key-please-change-this-is-long-enough-1234567890
   expiration-ms: 3600000

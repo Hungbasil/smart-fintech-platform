@@ -16,7 +16,6 @@ public class CreateWalletRequest {
     @DecimalMin(value = "0.0", inclusive = true, message = "Initial balance cannot be negative")
     private BigDecimal balance;
 
-    @NotNull(message = "User id is required")
     private UUID userId;
 
     public String getName() {

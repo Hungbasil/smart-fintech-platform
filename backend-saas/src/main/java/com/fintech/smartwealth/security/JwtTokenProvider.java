@@ -33,7 +33,14 @@ public class JwtTokenProvider {
 
     @PostConstruct
     public void init() {
-        signingKey = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+        if (jwtSecret == null || jwtSecret.isBlank()) {
+            throw new IllegalStateException("Missing required JWT secret. Set the JWT_SECRET environment variable.");
+        }
+        byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
+        if (keyBytes.length < 32) {
+            throw new IllegalStateException("JWT secret must be at least 32 bytes long.");
+        }
+        signingKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
     public String createToken(User user) {
