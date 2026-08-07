@@ -51,6 +51,8 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final CategoryRepository categoryRepository;
     private final TransactionRepository transactionRepository;
 
+    private final Map<UUID, Wallet> csvWalletMap = new HashMap<>();
+
     @Override
     @Transactional
     public void run(String... args) throws Exception {
@@ -123,7 +125,10 @@ public class DatabaseSeeder implements CommandLineRunner {
                         ? BigDecimal.ZERO
                         : parseAmount(balanceValue));
                 wallet.setUser(users.get(userId));
-                walletRepository.save(wallet);
+                Wallet savedWallet = walletRepository.save(wallet);
+                if (walletId != null && !walletId.isBlank()) {
+                    csvWalletMap.put(UUID.fromString(walletId), savedWallet);
+                }
             }
         }
 
@@ -131,8 +136,7 @@ public class DatabaseSeeder implements CommandLineRunner {
     }
 
     private SeedResult seedTransactions(Path file) throws IOException {
-        Map<UUID, Wallet> walletMap = new HashMap<>();
-        walletRepository.findAll().forEach(w -> walletMap.put(w.getId(), w));
+        Map<UUID, Wallet> walletMap = new HashMap<>(csvWalletMap);
 
         Map<String, Category> categoryMap = new HashMap<>();
         Map<UUID, BigDecimal> walletBalances = new HashMap<>();

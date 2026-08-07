@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.domain.Persistable;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -15,11 +16,20 @@ import java.util.UUID;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Wallet {
+public class Wallet implements Persistable<UUID> {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @Transient
+    private boolean isNew = true;
+
+    @PrePersist
+    void generateIdIfNeeded() {
+        if (this.id == null) {
+            this.id = UUID.randomUUID();
+        }
+    }
 
     @Column(nullable = false)
     private String name;
@@ -33,4 +43,20 @@ public class Wallet {
 
     @OneToMany(mappedBy = "wallet")
     private List<Transaction> transactions = new ArrayList<>();
+
+    @Override
+    public UUID getId() {
+        return id;
+    }
+
+    @Override
+    @Transient
+    public boolean isNew() {
+        return isNew;
+    }
+
+    @PostLoad
+    void markNotNew() {
+        this.isNew = false;
+    }
 }
