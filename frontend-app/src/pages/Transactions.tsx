@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, TableHead, TableBody, TableRow, TableCell, TableHeaderCell, Card, CardHeader, CardBody } from '../components';
 import api from '../services/api';
+import { Card as TremorCard, Title, Text, Badge } from '@tremor/react';
 
 interface Transaction {
   id: string;
@@ -39,37 +40,43 @@ export const Transactions: React.FC = () => {
     <div className="p-8">
       <h1 className="text-3xl font-bold text-gray-900 mb-8">Transactions</h1>
 
-      <Card>
-        <CardHeader>
-          <h3 className="text-lg font-semibold text-gray-900">Recent Transactions</h3>
-        </CardHeader>
-        <CardBody>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableHeaderCell>Date</TableHeaderCell>
-                <TableHeaderCell>Description</TableHeaderCell>
-                <TableHeaderCell>Amount</TableHeaderCell>
-                <TableHeaderCell>Wallet</TableHeaderCell>
-                <TableHeaderCell>Category</TableHeaderCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {transactions.map((transaction) => (
-                <TableRow key={transaction.id}>
-                  <TableCell>{transaction.transactionDate}</TableCell>
-                  <TableCell>{transaction.description}</TableCell>
-                  <TableCell className="font-semibold text-gray-900">
-                    ${transaction.amount.toFixed(2)}
-                  </TableCell>
-                  <TableCell>{transaction.walletId}</TableCell>
-                  <TableCell>{transaction.categoryId}</TableCell>
+      <TremorCard>
+        <Title>Recent Transactions</Title>
+        <Text className="mb-4">Latest transactions across your wallets</Text>
+        <Card>
+          <CardHeader>
+            <h3 className="text-lg font-semibold text-gray-900">Transactions</h3>
+          </CardHeader>
+          <CardBody>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeaderCell>Date</TableHeaderCell>
+                  <TableHeaderCell>Description</TableHeaderCell>
+                  <TableHeaderCell>Amount</TableHeaderCell>
+                  <TableHeaderCell>Wallet</TableHeaderCell>
+                  <TableHeaderCell>Category</TableHeaderCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardBody>
-      </Card>
+              </TableHead>
+              <TableBody>
+                {transactions.map((transaction) => (
+                  <TableRow key={transaction.id}>
+                    <TableCell>{new Date(transaction.transactionDate).toLocaleString()}</TableCell>
+                    <TableCell>{transaction.description}</TableCell>
+                    <TableCell className="font-semibold text-gray-900">
+                      ${transaction.amount.toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge>{transaction.walletId}</Badge>
+                    </TableCell>
+                    <TableCell>{transaction.categoryId}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardBody>
+        </Card>
+      </TremorCard>
     </div>
   );
 };

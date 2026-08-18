@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Card, CardHeader, CardBody } from '../components';
+import { Card as UiCard, CardHeader, CardBody } from '../components';
 import api from '../services/api';
+import { Card as TremorCard, Title, Metric, Text } from '@tremor/react';
 
 interface Wallet {
   id: string;
@@ -73,37 +74,27 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="p-8">
       <h1 className="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
-
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card>
-          <CardHeader>
-            <h3 className="text-sm font-medium text-gray-600">Total Balance</h3>
-          </CardHeader>
-          <CardBody>
-            <p className="text-3xl font-bold text-blue-600">${data?.totalBalance.toLocaleString()}</p>
-          </CardBody>
-        </Card>
+        <TremorCard>
+          <Title>Total Balance</Title>
+          <Metric>${data?.totalBalance.toLocaleString()}</Metric>
+          <Text className="mt-2">Combined balance across wallets</Text>
+        </TremorCard>
 
-        <Card>
-          <CardHeader>
-            <h3 className="text-sm font-medium text-gray-600">Monthly Transactions</h3>
-          </CardHeader>
-          <CardBody>
-            <p className="text-3xl font-bold text-green-600">{data?.monthlyTransactions}</p>
-          </CardBody>
-        </Card>
+        <TremorCard>
+          <Title>Monthly Transactions</Title>
+          <Metric>{data?.monthlyTransactions}</Metric>
+          <Text className="mt-2">Transactions this month</Text>
+        </TremorCard>
 
-        <Card>
-          <CardHeader>
-            <h3 className="text-sm font-medium text-gray-600">Savings Goal</h3>
-          </CardHeader>
-          <CardBody>
-            <p className="text-3xl font-bold text-purple-600">${data?.savingsGoal.toLocaleString()}</p>
-          </CardBody>
-        </Card>
+        <TremorCard>
+          <Title>Savings Goal</Title>
+          <Metric>${data?.savingsGoal.toLocaleString()}</Metric>
+          <Text className="mt-2">Progress towards goal</Text>
+        </TremorCard>
       </div>
 
-      <Card>
+      <UiCard>
         <CardHeader>
           <h3 className="text-lg font-semibold text-gray-900">Income vs Expenses</h3>
         </CardHeader>
@@ -120,7 +111,7 @@ export const Dashboard: React.FC = () => {
             </BarChart>
           </ResponsiveContainer>
         </CardBody>
-      </Card>
+      </UiCard>
     </div>
   );
 };
