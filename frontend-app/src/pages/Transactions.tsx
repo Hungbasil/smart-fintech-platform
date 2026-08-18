@@ -16,6 +16,9 @@ export const Transactions: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   useEffect(() => {
     fetchTransactions();
@@ -43,11 +46,19 @@ export const Transactions: React.FC = () => {
       <TremorCard>
         <Title>Recent Transactions</Title>
         <Text className="mb-4">Latest transactions across your wallets</Text>
-        <Card>
+          <Card>
           <CardHeader>
             <h3 className="text-lg font-semibold text-gray-900">Transactions</h3>
           </CardHeader>
           <CardBody>
+            <div className="mb-4">
+              <input
+                className="w-full border px-3 py-2 rounded"
+                placeholder="Search description, wallet, category..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              />
+            </div>
             <Table>
               <TableHead>
                 <TableRow>
@@ -59,21 +70,35 @@ export const Transactions: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {transactions.map((transaction) => (
-                  <TableRow key={transaction.id}>
-                    <TableCell>{new Date(transaction.transactionDate).toLocaleString()}</TableCell>
-                    <TableCell>{transaction.description}</TableCell>
-                    <TableCell className="font-semibold text-gray-900">
-                      ${transaction.amount.toFixed(2)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge>{transaction.walletId}</Badge>
-                    </TableCell>
-                    <TableCell>{transaction.categoryId}</TableCell>
-                  </TableRow>
-                ))}
+                {(() => {
+                  const filtered = transactions.filter((t) =>
+                    `${t.description} ${t.walletId} ${t.categoryId}`.toLowerCase().includes(search.toLowerCase())
+                  );
+                  const pageItems = filtered.slice((page - 1) * pageSize, page * pageSize);
+                  return pageItems.map((transaction) => (
+                    <TableRow key={transaction.id}>
+                      <TableCell>{new Date(transaction.transactionDate).toLocaleString()}</TableCell>
+                      <TableCell>{transaction.description}</TableCell>
+                      <TableCell className="font-semibold text-gray-900">
+                        ${transaction.amount.toFixed(2)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge>{transaction.walletId}</Badge>
+                      </TableCell>
+                      <TableCell>{transaction.categoryId}</TableCell>
+                    </TableRow>
+                  ));
+                })()}
               </TableBody>
             </Table>
+
+            <div className="mt-4 flex items-center justify-between">
+              <div className="text-sm text-gray-600">Page {page}</div>
+              <div className="flex gap-2">
+                <button onClick={() => setPage((p) => Math.max(1, p - 1))} className="px-3 py-1 border rounded">Prev</button>
+                <button onClick={() => setPage((p) => p + 1)} className="px-3 py-1 border rounded">Next</button>
+              </div>
+            </div>
           </CardBody>
         </Card>
       </TremorCard>

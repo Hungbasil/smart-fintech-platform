@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import auth from '../services/auth';
 
 export const Login: React.FC = () => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -11,7 +11,7 @@ export const Login: React.FC = () => {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await auth.login({ username, password });
+      await auth.login({ email, password });
       navigate('/', { replace: true });
     } catch (err: any) {
       setError(err?.response?.data?.message || err.message || 'Login failed');
@@ -24,10 +24,11 @@ export const Login: React.FC = () => {
       {error && <div className="text-red-600 mb-3">{error}</div>}
       <form onSubmit={submit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium">Username</label>
+          <label className="block text-sm font-medium">Email</label>
           <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             className="mt-1 block w-full border px-3 py-2 rounded"
           />
         </div>

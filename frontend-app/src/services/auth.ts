@@ -4,14 +4,14 @@ import type { AxiosResponse } from 'axios';
 const TOKEN_KEY = 'authToken';
 
 export interface LoginRequest {
-  username: string;
+  email: string;
   password: string;
 }
 
 export interface RegisterRequest {
-  username: string;
+  fullName: string;
+  email: string;
   password: string;
-  email?: string;
 }
 
 export async function login(payload: LoginRequest): Promise<AxiosResponse<any>> {
