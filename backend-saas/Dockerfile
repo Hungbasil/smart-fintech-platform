@@ -1,10 +1,10 @@
-FROM maven:3.9.8-eclipse-temurin-25 AS build
+FROM maven:3.9.8-eclipse-temurin-17 AS build
 WORKDIR /app
 COPY pom.xml .
 COPY src ./src
 RUN mvn -q -DskipTests package
 
-FROM eclipse-temurin:25-jre
+FROM eclipse-temurin:17-jre
 WORKDIR /app
 COPY --from=build /app/target/smart-wealth-0.0.1-SNAPSHOT.jar app.jar
 COPY wait-for-postgres.sh /app/wait-for-postgres.sh
