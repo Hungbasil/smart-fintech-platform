@@ -45,11 +45,26 @@ public class AuthService {
         User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+        if (!matchesPassword(request.getPassword(), user)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
 
         return issueToken(user);
+    }
+
+    private boolean matchesPassword(String rawPassword, User user) {
+        String storedPassword = user.getPassword();
+        if (storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2b$") || storedPassword.startsWith("$2y$")) {
+            return passwordEncoder.matches(rawPassword, storedPassword);
+        }
+
+        if (storedPassword.equals(rawPassword)) {
+            user.setPassword(passwordEncoder.encode(rawPassword));
+            userRepository.save(user);
+            return true;
+        }
+
+        return false;
     }
 
     private AuthResponse issueToken(User user) {

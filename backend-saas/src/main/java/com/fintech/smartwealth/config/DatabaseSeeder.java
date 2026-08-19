@@ -15,6 +15,8 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,6 +54,7 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final WalletRepository walletRepository;
     private final CategoryRepository categoryRepository;
     private final TransactionRepository transactionRepository;
+    private final PasswordEncoder passwordEncoder;
 
     private final Map<UUID, Wallet> csvWalletMap = new HashMap<>();
 
@@ -95,6 +98,7 @@ public class DatabaseSeeder implements CommandLineRunner {
 
     private int seedUsersAndWallets(Path file) throws IOException {
         Map<UUID, User> users = new LinkedHashMap<>();
+        PasswordEncoder encoder = passwordEncoder == null ? new BCryptPasswordEncoder() : passwordEncoder;
 
         try (Reader reader = openCsvReader(file);
              CSVParser parser = CSVFormat.DEFAULT.builder()
@@ -111,7 +115,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                     User user = new User();
                     user.setFullName("Mock User " + id.toString().substring(0, 8));
                     user.setEmail("user-" + id + "@seed.local");
-                    user.setPassword("seed123");
+                    user.setPassword(encoder.encode("seed123"));
                     return userRepository.save(user);
                 });
 

@@ -37,11 +37,20 @@ public class TransactionService {
                                              LocalDateTime fromDate,
                                              LocalDateTime toDate,
                                              Pageable pageable) {
+        String normalizedType = type == null ? "" : type;
         if (securityUtils.isAdmin()) {
-            return transactionRepository.findAllByFilters(walletId, categoryId, type, fromDate, toDate, pageable)
+            return transactionRepository.findAllByFilters(walletId, categoryId, normalizedType, fromDate, toDate, pageable)
                     .map(this::toResponse);
         }
-        return transactionRepository.findAllByWalletUserIdAndFilters(securityUtils.getCurrentUserId(), walletId, categoryId, type, fromDate, toDate, pageable)
+        if (normalizedType.isEmpty() && walletId == null && categoryId == null && fromDate == null && toDate == null) {
+            return transactionRepository.findAllByWalletUserId(securityUtils.getCurrentUserId(), pageable)
+                .map(this::toResponse);
+        }
+        if (normalizedType.isEmpty()) {
+            return transactionRepository.findAllByWalletUserIdWithoutTypeFilter(securityUtils.getCurrentUserId(), walletId, categoryId, fromDate, toDate, pageable)
+                .map(this::toResponse);
+        }
+        return transactionRepository.findAllByWalletUserIdAndFilters(securityUtils.getCurrentUserId(), walletId, categoryId, normalizedType, fromDate, toDate, pageable)
                 .map(this::toResponse);
     }
 

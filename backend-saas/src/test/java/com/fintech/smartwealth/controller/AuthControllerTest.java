@@ -88,6 +88,32 @@ class AuthControllerTest {
     }
 
     @Test
+    void loginShouldUpgradeLegacyPlainTextPassword() throws Exception {
+        String email = "legacy-" + UUID.randomUUID() + "@example.com";
+        User user = new User();
+        user.setFullName("Legacy User");
+        user.setEmail(email);
+        user.setPassword("seed123");
+        userRepository.save(user);
+
+        String payload = """
+                {
+                  "email": "%s",
+                  "password": "seed123"
+                }
+                """.formatted(email);
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").exists());
+
+        User upgraded = userRepository.findByEmail(email).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertTrue(upgraded.getPassword().startsWith("$2"));
+    }
+
+    @Test
     void accessingProtectedEndpointWithoutTokenShouldReturnJson401() throws Exception {
         mockMvc.perform(get("/api/v1/wallets"))
                 .andExpect(status().isUnauthorized())
