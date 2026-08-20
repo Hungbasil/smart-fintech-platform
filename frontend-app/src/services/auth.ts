@@ -2,6 +2,13 @@ import api from './api';
 import type { AxiosResponse } from 'axios';
 
 const TOKEN_KEY = 'authToken';
+const USER_KEY = 'authUser';
+
+export interface AuthUser {
+  id: string;
+  fullName: string;
+  email: string;
+}
 
 export interface LoginRequest {
   email: string;
@@ -20,6 +27,9 @@ export async function login(payload: LoginRequest): Promise<AxiosResponse<any>> 
   if (token) {
     localStorage.setItem(TOKEN_KEY, token);
   }
+  if (res.data?.user) {
+    localStorage.setItem(USER_KEY, JSON.stringify(res.data.user));
+  }
   return res;
 }
 
@@ -30,6 +40,7 @@ export async function register(payload: RegisterRequest): Promise<AxiosResponse<
 
 export function logout() {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
 }
 
 export function getToken(): string | null {
@@ -40,4 +51,14 @@ export function isAuthenticated(): boolean {
   return !!getToken();
 }
 
-export default { login, register, logout, getToken, isAuthenticated };
+export function getUser(): AuthUser | null {
+  const storedUser = localStorage.getItem(USER_KEY);
+  if (!storedUser) return null;
+  try {
+    return JSON.parse(storedUser) as AuthUser;
+  } catch {
+    return null;
+  }
+}
+
+export default { login, register, logout, getToken, getUser, isAuthenticated };

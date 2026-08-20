@@ -16,6 +16,10 @@ export const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) =
     return <>{children}</>;
   }
 
+  const user = auth.getUser();
+  const displayName = user?.fullName || user?.email || 'Account';
+  const initials = displayName.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase();
+
   return (
     <div className="app-shell flex">
       <aside className="hidden w-[248px] shrink-0 border-r border-[#e3ebe8] bg-[#fbfdfc] px-5 py-6 lg:flex lg:flex-col">
@@ -43,7 +47,7 @@ export const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) =
             <span className="text-[15px] font-extrabold text-[#17212b]">SmartFin</span>
           </div>
           <div className="hidden text-[13px] font-semibold text-[#71808c] lg:block">Personal finance workspace</div>
-          <button className="flex items-center gap-2 rounded-full border border-[#e3ebe8] bg-white py-1.5 pl-1.5 pr-3 text-xs font-bold text-[#17212b] shadow-sm"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#dcefeb] text-[11px] text-[#075c57]">JD</span>Jordan Davis<ChevronDown size={14} className="text-[#9aa7af]" /></button>
+          <button className="flex items-center gap-2 rounded-full border border-[#e3ebe8] bg-white py-1.5 pl-1.5 pr-3 text-xs font-bold text-[#17212b] shadow-sm"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#dcefeb] text-[11px] text-[#075c57]">{initials}</span>{displayName}<ChevronDown size={14} className="text-[#9aa7af]" /></button>
         </header>
         <main className="app-content page-enter">{children}</main>
         <nav className="fixed inset-x-0 bottom-0 z-20 flex justify-around border-t border-[#e3ebe8] bg-[#fbfdfc]/95 px-2 py-2 backdrop-blur lg:hidden">
