@@ -9,7 +9,7 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
     return (
       <div
         ref={ref}
-        className={`bg-white rounded-lg shadow-md border border-gray-200 p-6 ${className || ''}`}
+        className={`surface p-6 ${className || ''}`}
         {...props}
       >
         {children}
@@ -29,7 +29,7 @@ export const CardHeader = React.forwardRef<HTMLDivElement, CardHeaderProps>(
     return (
       <div
         ref={ref}
-        className={`pb-4 border-b border-gray-200 mb-4 ${className || ''}`}
+        className={`mb-4 border-b border-[#e3ebe8] pb-4 ${className || ''}`}
         {...props}
       >
         {children}

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { ArrowUpRight, CircleDollarSign, ReceiptText, WalletCards } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card as UiCard, CardHeader, CardBody } from '../components';
 import api from '../services/api';
-import { Card as TremorCard, Title, Metric, Text } from '@tremor/react';
 
 interface Wallet {
   id: string;
@@ -23,11 +23,19 @@ interface Transaction {
 interface DashboardData {
   totalBalance: number;
   monthlyTransactions: number;
-  savingsGoal: number;
+  monthlyVolume: number;
 }
+
+interface TransactionPage {
+  content: Transaction[];
+  totalElements: number;
+}
+
+const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 
 export const Dashboard: React.FC = () => {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,17 +48,24 @@ export const Dashboard: React.FC = () => {
       setLoading(true);
       const [walletsResponse, transactionsResponse] = await Promise.all([
         api.get<Wallet[]>('/wallets'),
-        api.get<Transaction[]>('/transactions'),
+        api.get<TransactionPage | Transaction[]>('/transactions', { params: { size: 50 } }),
       ]);
 
       const wallets = walletsResponse.data;
-      const transactions = transactionsResponse.data;
+      const transactionData = transactionsResponse.data;
+      const loadedTransactions = Array.isArray(transactionData) ? transactionData : transactionData.content;
+      const now = new Date();
+      const currentMonthTransactions = loadedTransactions.filter((transaction) => {
+        const date = new Date(transaction.transactionDate);
+        return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+      });
       const totalBalance = wallets.reduce((sum, wallet) => sum + wallet.balance, 0);
 
+      setTransactions(loadedTransactions);
       setData({
         totalBalance,
-        monthlyTransactions: transactions.length,
-        savingsGoal: 50000,
+        monthlyTransactions: currentMonthTransactions.length,
+        monthlyVolume: currentMonthTransactions.reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0),
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch dashboard data');
@@ -59,59 +74,52 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  const chartData = [
-    { month: 'Jan', income: 4000, expenses: 2400 },
-    { month: 'Feb', income: 3000, expenses: 1398 },
-    { month: 'Mar', income: 2000, expenses: 9800 },
-    { month: 'Apr', income: 2780, expenses: 3908 },
-    { month: 'May', income: 1890, expenses: 4800 },
-    { month: 'Jun', income: 2390, expenses: 3800 },
-  ];
+  const chartData = Array.from({ length: 6 }, (_, index) => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - (5 - index), 1);
+    const monthTransactions = transactions.filter((transaction) => {
+      const transactionDate = new Date(transaction.transactionDate);
+      return transactionDate.getMonth() === date.getMonth() && transactionDate.getFullYear() === date.getFullYear();
+    });
+    return {
+      month: date.toLocaleDateString('en-US', { month: 'short' }),
+      volume: monthTransactions.reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0),
+    };
+  });
 
   if (loading) return <div className="p-8">Loading...</div>;
   if (error) return <div className="p-8 text-red-600">Error: {error}</div>;
 
   return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <TremorCard>
-          <Title>Total Balance</Title>
-          <Metric>${data?.totalBalance.toLocaleString()}</Metric>
-          <Text className="mt-2">Combined balance across wallets</Text>
-        </TremorCard>
-
-        <TremorCard>
-          <Title>Monthly Transactions</Title>
-          <Metric>{data?.monthlyTransactions}</Metric>
-          <Text className="mt-2">Transactions this month</Text>
-        </TremorCard>
-
-        <TremorCard>
-          <Title>Savings Goal</Title>
-          <Metric>${data?.savingsGoal.toLocaleString()}</Metric>
-          <Text className="mt-2">Progress towards goal</Text>
-        </TremorCard>
+    <div>
+      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div><div className="eyebrow">Thursday, August 20, 2026</div><h1 className="page-title">Good morning, Jordan</h1><p className="page-subtitle">Here is your financial snapshot for this month.</p></div>
+        <button className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#087f74] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#075c57]"><ArrowUpRight size={17} />Add transaction</button>
       </div>
 
-      <UiCard>
-        <CardHeader>
-          <h3 className="text-lg font-semibold text-gray-900">Income vs Expenses</h3>
-        </CardHeader>
-        <CardBody>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="income" fill="#8884d8" />
-              <Bar dataKey="expenses" fill="#82ca9d" />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardBody>
-      </UiCard>
+      <div className="mb-7 grid grid-cols-1 gap-4 md:grid-cols-3">
+        {[
+          { label: 'Total balance', value: currency.format(data?.totalBalance ?? 0), detail: 'Across all wallets', icon: WalletCards, tone: 'teal' },
+          { label: 'Monthly activity', value: `${data?.monthlyTransactions ?? 0}`, detail: 'Transactions this month', icon: ReceiptText, tone: 'amber' },
+          { label: 'Monthly volume', value: currency.format(data?.monthlyVolume ?? 0), detail: 'Tracked financial activity', icon: CircleDollarSign, tone: 'coral' },
+        ].map(({ label, value, detail, icon: Icon, tone }) => (
+          <div key={label} className="surface surface-pad group transition hover:-translate-y-0.5 hover:shadow-md">
+            <div className="mb-6 flex items-start justify-between"><span className={`flex h-10 w-10 items-center justify-center rounded-xl ${tone === 'teal' ? 'bg-[#e4f4f0] text-[#087f74]' : tone === 'amber' ? 'bg-[#fff4df] text-[#bd7a22]' : 'bg-[#fff1ef] text-[#d76756]'}`}><Icon size={19} /></span><ArrowUpRight size={16} className="text-[#c0cbc7] transition group-hover:text-[#087f74]" /></div>
+            <div className="mb-1 text-[12px] font-bold text-[#71808c]">{label}</div><div className="metric-value">{value}</div><div className="mt-2 text-[12px] text-[#9aa7af]">{detail}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr_1fr]">
+        <UiCard>
+          <CardHeader><div className="flex items-start justify-between"><div><h3 className="section-title">Activity overview</h3><p className="section-caption mt-1">Transaction volume across the last six months</p></div><span className="rounded-lg bg-[#e4f4f0] px-2.5 py-1 text-[11px] font-bold text-[#087f74]">Live data</span></div></CardHeader>
+          <CardBody><ResponsiveContainer width="100%" height={285}><BarChart data={chartData} barSize={24}><CartesianGrid vertical={false} stroke="#e8efec" /><XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#9aa7af', fontSize: 12 }} /><YAxis axisLine={false} tickLine={false} tick={{ fill: '#9aa7af', fontSize: 11 }} tickFormatter={(value) => `$${value / 1000}k`} /><Tooltip cursor={{ fill: '#f4f7f6' }} formatter={(value) => [currency.format(Number(value)), 'Volume']} contentStyle={{ border: '1px solid #e3ebe8', borderRadius: 10, boxShadow: '0 8px 20px rgba(23,33,43,.08)' }} /><Bar dataKey="volume" fill="#087f74" radius={[6, 6, 2, 2]} /></BarChart></ResponsiveContainer></CardBody>
+        </UiCard>
+        <UiCard>
+          <CardHeader><div><h3 className="section-title">Recent transactions</h3><p className="section-caption mt-1">Your latest financial activity</p></div></CardHeader>
+          <CardBody><div className="divide-y divide-[#edf2f0]">{transactions.slice(0, 5).map((transaction) => <div key={transaction.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"><div className="min-w-0"><p className="truncate text-[13px] font-bold text-[#17212b]">{transaction.description || 'Untitled transaction'}</p><p className="mt-0.5 text-[11px] text-[#9aa7af]">{new Date(transaction.transactionDate).toLocaleDateString()}</p></div><span className="shrink-0 text-[13px] font-extrabold text-[#d76756]">-{currency.format(Math.abs(transaction.amount))}</span></div>)}{transactions.length === 0 && <div className="py-10 text-center text-sm text-[#9aa7af]">No transactions yet.</div>}</div></CardBody>
+        </UiCard>
+      </div>
     </div>
   );
 };

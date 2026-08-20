@@ -12,6 +12,10 @@ interface Transaction {
   categoryId: string;
 }
 
+interface TransactionPage {
+  content: Transaction[];
+}
+
 export const Analytics: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,8 +28,8 @@ export const Analytics: React.FC = () => {
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      const response = await api.get<Transaction[]>('/transactions');
-      setTransactions(response.data);
+      const response = await api.get<TransactionPage | Transaction[]>('/transactions', { params: { size: 100 } });
+      setTransactions(Array.isArray(response.data) ? response.data : response.data.content);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch analytics');
     } finally {
@@ -50,13 +54,13 @@ export const Analytics: React.FC = () => {
   const totalSpending = categoryData.reduce((sum, item) => sum + item.value, 0);
 
   return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Analytics</h1>
+    <div>
+      <div className="mb-8"><div className="eyebrow">Patterns and insights</div><h1 className="page-title">Analytics</h1><p className="page-subtitle">See where your money is going and how your habits change over time.</p></div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold text-gray-900">Spending by Category</h3>
+            <h3 className="section-title">Spending by Category</h3>
           </CardHeader>
           <CardBody>
             <ResponsiveContainer width="100%" height={300}>
@@ -86,7 +90,7 @@ export const Analytics: React.FC = () => {
 
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold text-gray-900">Spending Trend</h3>
+            <h3 className="section-title">Spending Trend</h3>
           </CardHeader>
           <CardBody>
             <ResponsiveContainer width="100%" height={300}>
@@ -104,9 +108,9 @@ export const Analytics: React.FC = () => {
         </Card>
       </div>
 
-      <Card className="mt-8">
+      <Card className="mt-5">
         <CardHeader>
-          <h3 className="text-lg font-semibold text-gray-900">Category Breakdown</h3>
+          <h3 className="section-title">Category Breakdown</h3>
         </CardHeader>
         <CardBody>
           <div className="space-y-3">
