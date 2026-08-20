@@ -16,10 +16,17 @@ interface TransactionPage {
   content: Transaction[];
 }
 
+interface Category {
+  id: string;
+  name: string;
+  type: string;
+}
+
 export const Analytics: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
     fetchAnalytics();
@@ -28,8 +35,12 @@ export const Analytics: React.FC = () => {
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      const response = await api.get<TransactionPage | Transaction[]>('/transactions', { params: { size: 100 } });
-      setTransactions(Array.isArray(response.data) ? response.data : response.data.content);
+      const [transactionResponse, categoryResponse] = await Promise.all([
+        api.get<TransactionPage | Transaction[]>('/transactions', { params: { size: 100 } }),
+        api.get<Category[]>('/categories'),
+      ]);
+      setTransactions(Array.isArray(transactionResponse.data) ? transactionResponse.data : transactionResponse.data.content);
+      setCategories(categoryResponse.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch analytics');
     } finally {
@@ -37,16 +48,24 @@ export const Analytics: React.FC = () => {
     }
   };
 
-  const categoryData = [
-    { name: 'Expenses', value: transactions.filter((item) => item.amount < 0).reduce((sum, item) => sum + Math.abs(item.amount), 0), color: '#FF6B6B' },
-    { name: 'Income', value: transactions.filter((item) => item.amount > 0).reduce((sum, item) => sum + item.amount, 0), color: '#4ECDC4' },
-  ];
+  const expenseCategories = categories.filter((category) => category.type.toUpperCase() === 'EXPENSE');
+  const palette = ['#087f74', '#d76756', '#bd7a22', '#4c8d9a', '#8c6f56', '#6b7c70'];
+  const categoryData = expenseCategories.map((category, index) => ({
+    name: category.name,
+    value: transactions.filter((transaction) => transaction.categoryId === category.id).reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0),
+    color: palette[index % palette.length],
+  })).filter((category) => category.value > 0);
 
-  const trendData = transactions.slice(0, 6).map((item, index) => ({
-    month: `T${index + 1}`,
-    spending: Math.abs(item.amount),
-    budget: 4000,
-  }));
+  const trendData = Array.from({ length: 6 }, (_, index) => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - (5 - index), 1);
+    const spending = transactions.filter((transaction) => {
+      const transactionDate = new Date(transaction.transactionDate);
+      const category = categories.find((item) => item.id === transaction.categoryId);
+      return category?.type.toUpperCase() === 'EXPENSE' && transactionDate.getMonth() === date.getMonth() && transactionDate.getFullYear() === date.getFullYear();
+    }).reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
+    return { month: date.toLocaleDateString('en-US', { month: 'short' }), spending };
+  });
 
   if (loading) return <div className="p-8">Loading...</div>;
   if (error) return <div className="p-8 text-red-600">Error: {error}</div>;
@@ -82,8 +101,8 @@ export const Analytics: React.FC = () => {
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <p className="text-sm text-gray-600">Total Spending: <span className="font-bold text-gray-900">${totalSpending}</span></p>
+            <div className="mt-4 border-t border-[#e3ebe8] pt-4">
+              <p className="text-sm text-[#71808c]">Total spending: <span className="font-extrabold text-[#17212b]">${totalSpending.toLocaleString()}</span></p>
             </div>
           </CardBody>
         </Card>
@@ -100,8 +119,7 @@ export const Analytics: React.FC = () => {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="spending" stroke="#FF6B6B" name="Actual Spending" strokeWidth={2} />
-                <Line type="monotone" dataKey="budget" stroke="#4ECDC4" name="Budget" strokeWidth={2} strokeDasharray="5 5" />
+                <Line type="monotone" dataKey="spending" stroke="#087f74" name="Spending" strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
           </CardBody>
@@ -119,10 +137,10 @@ export const Analytics: React.FC = () => {
               return (
                 <div key={item.name}>
                   <div className="flex justify-between mb-1">
-                    <span className="text-sm font-medium text-gray-700">{item.name}</span>
-                    <span className="text-sm font-semibold text-gray-900">${item.value}</span>
+                    <span className="text-sm font-bold text-[#71808c]">{item.name}</span>
+                    <span className="text-sm font-extrabold text-[#17212b]">${item.value.toLocaleString()}</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="h-2 w-full rounded-full bg-[#edf2f0]">
                     <div className="h-2 rounded-full" style={{ width: `${percentage}%`, backgroundColor: item.color }} />
                   </div>
                 </div>

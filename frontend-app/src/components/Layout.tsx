@@ -1,13 +1,14 @@
 import React from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import auth from '../services/auth';
-import { BarChart3, ChevronDown, LayoutDashboard, LogOut, ReceiptText, WalletCards } from 'lucide-react';
+import { BarChart3, ChevronDown, LayoutDashboard, LogOut, ReceiptText, Tag, WalletCards } from 'lucide-react';
 
 const navigation = [
   { label: 'Overview', to: '/', icon: LayoutDashboard },
   { label: 'Transactions', to: '/transactions', icon: ReceiptText },
   { label: 'Wallets', to: '/wallets', icon: WalletCards },
   { label: 'Analytics', to: '/analytics', icon: BarChart3 },
+  { label: 'Categories', to: '/categories', icon: Tag },
 ];
 
 export const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {

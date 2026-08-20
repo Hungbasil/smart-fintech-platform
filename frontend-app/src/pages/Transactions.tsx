@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, SlidersHorizontal } from 'lucide-react';
+import { Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import { Table, TableHead, TableBody, TableRow, TableCell, TableHeaderCell, Card, CardHeader, CardBody } from '../components';
 import api from '../services/api';
 
@@ -18,6 +18,18 @@ interface TransactionPage {
   totalPages: number;
 }
 
+interface WalletOption {
+  id: string;
+  name: string;
+  balance: number;
+}
+
+interface CategoryOption {
+  id: string;
+  name: string;
+  type: string;
+}
+
 const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
 export const Transactions: React.FC = () => {
@@ -28,13 +40,23 @@ export const Transactions: React.FC = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalElements, setTotalElements] = useState(0);
+  const [wallets, setWallets] = useState<WalletOption[]>([]);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
+  const [filters, setFilters] = useState({ type: '', walletId: '', categoryId: '' });
+  const [form, setForm] = useState({ description: '', amount: '', transactionDate: new Date().toISOString().slice(0, 16), walletId: '', categoryId: '' });
   const pageSize = 10;
 
   useEffect(() => {
     const fetchTransactions = async () => {
       try {
         setLoading(true);
-        const response = await api.get<TransactionPage | Transaction[]>('/transactions', { params: { page: page - 1, size: pageSize } });
+        const response = await api.get<TransactionPage | Transaction[]>('/transactions', { params: { page: page - 1, size: pageSize, ...filters } });
         if (Array.isArray(response.data)) {
           setTransactions(response.data);
           setTotalElements(response.data.length);
@@ -52,19 +74,92 @@ export const Transactions: React.FC = () => {
     };
 
     fetchTransactions();
-  }, [page]);
+  }, [page, reloadToken, filters]);
+
+  useEffect(() => {
+    const loadFormOptions = async () => {
+      try {
+        const [walletResponse, categoryResponse] = await Promise.all([
+          api.get<WalletOption[]>('/wallets'),
+          api.get<CategoryOption[]>('/categories'),
+        ]);
+        setWallets(walletResponse.data);
+        setCategories(categoryResponse.data);
+      } catch (err) {
+        setFormError(err instanceof Error ? err.message : 'Unable to load form options');
+      }
+    };
+
+    loadFormOptions();
+  }, []);
+
+  const createTransaction = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setFormError(null);
+    setIsSaving(true);
+    try {
+      const payload = {
+        description: form.description,
+        amount: Number(form.amount),
+        transactionDate: form.transactionDate,
+        walletId: form.walletId,
+        categoryId: form.categoryId,
+      };
+      if (editingTransactionId) {
+        await api.put(`/transactions/${editingTransactionId}`, payload);
+      } else {
+        await api.post('/transactions', payload);
+      }
+      setIsCreateOpen(false);
+      setEditingTransactionId(null);
+      setForm({ description: '', amount: '', transactionDate: new Date().toISOString().slice(0, 16), walletId: '', categoryId: '' });
+      setReloadToken((value) => value + 1);
+    } catch (err: any) {
+      setFormError(err?.response?.data?.message || 'Unable to create transaction');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const openCreateModal = () => {
+    setEditingTransactionId(null);
+    setFormError(null);
+    setForm({ description: '', amount: '', transactionDate: new Date().toISOString().slice(0, 16), walletId: '', categoryId: '' });
+    setIsCreateOpen(true);
+  };
+
+  const openEditModal = (transaction: Transaction) => {
+    setEditingTransactionId(transaction.id);
+    setFormError(null);
+    setForm({ description: transaction.description, amount: String(transaction.amount), transactionDate: transaction.transactionDate.slice(0, 16), walletId: transaction.walletId, categoryId: transaction.categoryId });
+    setIsCreateOpen(true);
+  };
+
+  const deleteTransaction = async (id: string) => {
+    if (!window.confirm('Delete this transaction? The wallet balance will be recalculated.')) return;
+    setDeletingId(id);
+    setError(null);
+    try {
+      await api.delete(`/transactions/${id}`);
+      setReloadToken((value) => value + 1);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Unable to delete transaction');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   if (loading) return <div className="p-8">Loading...</div>;
   if (error) return <div className="p-8 text-red-600">Error: {error}</div>;
 
   return (
     <div>
-      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="eyebrow">Money movement</div><h1 className="page-title">Transactions</h1><p className="page-subtitle">Review and understand every movement across your wallets.</p></div><button className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#087f74] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#075c57]"><span className="text-lg leading-none">+</span>Add transaction</button></div>
+      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="eyebrow">Money movement</div><h1 className="page-title">Transactions</h1><p className="page-subtitle">Review and understand every movement across your wallets.</p></div><button onClick={openCreateModal} className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#087f74] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#075c57]"><Plus size={17} />Add transaction</button></div>
 
       <Card>
-        <CardHeader><div className="flex items-center justify-between"><div><h3 className="section-title">All transactions</h3><p className="section-caption mt-1">{totalElements} records in your workspace</p></div><button className="hidden items-center gap-2 rounded-lg border border-[#e3ebe8] px-3 py-2 text-xs font-bold text-[#71808c] transition hover:bg-[#f4f7f6] sm:flex"><SlidersHorizontal size={14} />Filters</button></div></CardHeader>
+        <CardHeader><div className="flex items-center justify-between"><div><h3 className="section-title">All transactions</h3><p className="section-caption mt-1">{totalElements} records in your workspace</p></div><span className="hidden items-center gap-2 rounded-lg border border-[#e3ebe8] px-3 py-2 text-xs font-bold text-[#71808c] sm:flex"><SlidersHorizontal size={14} />Filters below</span></div></CardHeader>
           <CardBody>
-            <div className="mb-5 flex flex-col gap-3 sm:flex-row"><div className="relative flex-1"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa7af]" /><input className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] py-2.5 pl-9 pr-3 text-sm outline-none transition placeholder:text-[#a8b3b0] focus:border-[#087f74] focus:ring-2 focus:ring-[#e4f4f0]" placeholder="Search this page..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} /></div><button className="flex items-center justify-center gap-2 rounded-xl border border-[#e3ebe8] px-3 py-2 text-xs font-bold text-[#71808c] sm:hidden"><SlidersHorizontal size={14} />Filters</button></div>
+            <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_150px_150px_150px]"><div className="relative"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa7af]" /><input className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] py-2.5 pl-9 pr-3 text-sm outline-none transition placeholder:text-[#a8b3b0] focus:border-[#087f74] focus:ring-2 focus:ring-[#e4f4f0]" placeholder="Search this page..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} /></div><select aria-label="Filter by type" value={filters.type} onChange={(e) => { setFilters({ ...filters, type: e.target.value }); setPage(1); }} className="rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-xs font-semibold text-[#71808c] outline-none focus:border-[#087f74]"><option value="">All types</option><option value="INCOME">Income</option><option value="EXPENSE">Expense</option></select><select aria-label="Filter by wallet" value={filters.walletId} onChange={(e) => { setFilters({ ...filters, walletId: e.target.value }); setPage(1); }} className="rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-xs font-semibold text-[#71808c] outline-none focus:border-[#087f74]"><option value="">All wallets</option>{wallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}</select><select aria-label="Filter by category" value={filters.categoryId} onChange={(e) => { setFilters({ ...filters, categoryId: e.target.value }); setPage(1); }} className="rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-xs font-semibold text-[#71808c] outline-none focus:border-[#087f74]"><option value="">All categories</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></div>
             <Table>
               <TableHead>
                 <TableRow>
@@ -73,6 +168,7 @@ export const Transactions: React.FC = () => {
                   <TableHeaderCell className="text-right">Amount</TableHeaderCell>
                   <TableHeaderCell>Wallet</TableHeaderCell>
                   <TableHeaderCell>Category</TableHeaderCell>
+                  <TableHeaderCell className="text-right">Actions</TableHeaderCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -87,8 +183,9 @@ export const Transactions: React.FC = () => {
                       <TableCell className="text-right font-extrabold text-[#d76756]">
                         -{currency.format(Math.abs(transaction.amount))}
                       </TableCell>
-                      <TableCell><span className="rounded-lg bg-[#edf4f2] px-2 py-1 text-[11px] font-bold text-[#075c57]">{transaction.walletId.slice(0, 8)}</span></TableCell>
-                      <TableCell><span className="text-xs text-[#71808c]">{transaction.categoryId.slice(0, 8)}</span></TableCell>
+                      <TableCell><span className="rounded-lg bg-[#edf4f2] px-2 py-1 text-[11px] font-bold text-[#075c57]">{wallets.find((wallet) => wallet.id === transaction.walletId)?.name || transaction.walletId.slice(0, 8)}</span></TableCell>
+                      <TableCell><span className="text-xs text-[#71808c]">{categories.find((category) => category.id === transaction.categoryId)?.name || transaction.categoryId.slice(0, 8)}</span></TableCell>
+                      <TableCell><div className="flex justify-end gap-1"><button aria-label="Edit transaction" title="Edit transaction" onClick={() => openEditModal(transaction)} className="rounded-lg p-2 text-[#9aa7af] transition hover:bg-[#e4f4f0] hover:text-[#087f74]"><Pencil size={15} /></button><button aria-label="Delete transaction" title="Delete transaction" disabled={deletingId === transaction.id} onClick={() => deleteTransaction(transaction.id)} className="rounded-lg p-2 text-[#9aa7af] transition hover:bg-[#fff1ef] hover:text-[#d76756] disabled:opacity-40"><Trash2 size={15} /></button></div></TableCell>
                     </TableRow>
                   ));
                 })()}
@@ -100,6 +197,7 @@ export const Transactions: React.FC = () => {
             </div>
           </CardBody>
       </Card>
+      {isCreateOpen && <div className="fixed inset-0 z-40 flex items-end justify-center bg-[#17212b]/35 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"><div role="dialog" aria-modal="true" aria-labelledby="create-transaction-title" className="w-full max-w-[520px] rounded-t-2xl bg-white p-6 shadow-2xl sm:rounded-2xl"><div className="mb-6 flex items-start justify-between"><div><div className="eyebrow">{editingTransactionId ? 'Update record' : 'New record'}</div><h2 id="create-transaction-title" className="mt-1 text-xl font-extrabold tracking-[-.04em] text-[#17212b]">{editingTransactionId ? 'Edit transaction' : 'Add transaction'}</h2><p className="mt-1 text-xs text-[#71808c]">Amounts are positive. Category type determines income or expense.</p></div><button aria-label="Close" onClick={() => { setIsCreateOpen(false); setEditingTransactionId(null); }} className="rounded-lg p-2 text-[#9aa7af] transition hover:bg-[#f4f7f6] hover:text-[#17212b]"><X size={18} /></button></div><form onSubmit={createTransaction} className="space-y-4">{formError && <div className="rounded-xl bg-[#fff1ef] px-3 py-2.5 text-sm font-semibold text-[#c25344]">{formError}</div>}<div><label className="mb-1.5 block text-xs font-bold text-[#71808c]">Description</label><input required value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="e.g. Monthly salary" className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74] focus:ring-2 focus:ring-[#e4f4f0]" /></div><div className="grid grid-cols-1 gap-4 sm:grid-cols-2"><div><label className="mb-1.5 block text-xs font-bold text-[#71808c]">Amount</label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#9aa7af]">$</span><input required min="0.01" step="0.01" type="number" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] py-2.5 pl-7 pr-3 text-sm outline-none focus:border-[#087f74] focus:ring-2 focus:ring-[#e4f4f0]" /></div></div><div><label className="mb-1.5 block text-xs font-bold text-[#71808c]">Date and time</label><input required type="datetime-local" value={form.transactionDate} onChange={(event) => setForm({ ...form, transactionDate: event.target.value })} className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74] focus:ring-2 focus:ring-[#e4f4f0]" /></div></div><div className="grid grid-cols-1 gap-4 sm:grid-cols-2"><div><label className="mb-1.5 block text-xs font-bold text-[#71808c]">Wallet</label><select required value={form.walletId} onChange={(event) => setForm({ ...form, walletId: event.target.value })} className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74]"><option value="">Select wallet</option>{wallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}</select></div><div><label className="mb-1.5 block text-xs font-bold text-[#71808c]">Category</label><select required value={form.categoryId} onChange={(event) => setForm({ ...form, categoryId: event.target.value })} className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74]"><option value="">Select category</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name} ({category.type.toLowerCase()})</option>)}</select></div></div><div className="mt-6 flex justify-end gap-3 border-t border-[#edf2f0] pt-5"><button type="button" onClick={() => { setIsCreateOpen(false); setEditingTransactionId(null); }} className="rounded-xl border border-[#e3ebe8] px-4 py-2.5 text-sm font-bold text-[#71808c] hover:bg-[#f4f7f6]">Cancel</button><button type="submit" disabled={isSaving || !wallets.length || !categories.length} className="rounded-xl bg-[#087f74] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#075c57] disabled:cursor-not-allowed disabled:opacity-50">{isSaving ? 'Saving...' : editingTransactionId ? 'Update transaction' : 'Save transaction'}</button></div></form></div></div>}
     </div>
   );
 };
