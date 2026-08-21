@@ -34,23 +34,25 @@ public class TransactionService {
     public Page<TransactionResponse> findAll(UUID walletId,
                                              UUID categoryId,
                                              String type,
+                                             String search,
                                              LocalDateTime fromDate,
                                              LocalDateTime toDate,
                                              Pageable pageable) {
         String normalizedType = type == null ? "" : type;
+        String normalizedSearch = search == null ? "" : search.trim();
         if (securityUtils.isAdmin()) {
-            return transactionRepository.findAllByFilters(walletId, categoryId, normalizedType, fromDate, toDate, pageable)
+            return transactionRepository.findAllByFilters(walletId, categoryId, normalizedType, fromDate, toDate, normalizedSearch, pageable)
                     .map(this::toResponse);
         }
-        if (normalizedType.isEmpty() && walletId == null && categoryId == null && fromDate == null && toDate == null) {
-            return transactionRepository.findAllByWalletUserId(securityUtils.getCurrentUserId(), pageable)
+        if (normalizedType.isEmpty() && normalizedSearch.isEmpty() && walletId == null && categoryId == null && fromDate == null && toDate == null) {
+            return transactionRepository.findAllByWalletUserId(securityUtils.getCurrentUserId(), normalizedSearch, pageable)
                 .map(this::toResponse);
         }
         if (normalizedType.isEmpty()) {
-            return transactionRepository.findAllByWalletUserIdWithoutTypeFilter(securityUtils.getCurrentUserId(), walletId, categoryId, fromDate, toDate, pageable)
+            return transactionRepository.findAllByWalletUserIdWithoutTypeFilter(securityUtils.getCurrentUserId(), walletId, categoryId, fromDate, toDate, normalizedSearch, pageable)
                 .map(this::toResponse);
         }
-        return transactionRepository.findAllByWalletUserIdAndFilters(securityUtils.getCurrentUserId(), walletId, categoryId, normalizedType, fromDate, toDate, pageable)
+        return transactionRepository.findAllByWalletUserIdAndFilters(securityUtils.getCurrentUserId(), walletId, categoryId, normalizedType, fromDate, toDate, normalizedSearch, pageable)
                 .map(this::toResponse);
     }
 
@@ -76,6 +78,7 @@ public class TransactionService {
         if (!securityUtils.isAdmin() && !wallet.getUser().getId().equals(securityUtils.getCurrentUserId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
         }
+        validateCategoryOwnership(category, wallet.getUser().getId());
 
         Transaction transaction = new Transaction();
         transaction.setAmount(request.getAmount());
@@ -113,6 +116,7 @@ public class TransactionService {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
             }
         }
+        validateCategoryOwnership(category, newWallet.getUser().getId());
 
         BigDecimal oldDelta = resolveDelta(existing.getAmount(), existing.getCategory().getType());
         BigDecimal newDelta = resolveDelta(request.getAmount(), category.getType());
@@ -180,6 +184,13 @@ public class TransactionService {
 
     private BigDecimal resolveDelta(Transaction transaction) {
         return resolveDelta(transaction.getAmount(), transaction.getCategory() == null ? null : transaction.getCategory().getType());
+    }
+
+    private void validateCategoryOwnership(Category category, UUID userId) {
+        if (!securityUtils.isAdmin()
+                && (category.getUser() == null || !category.getUser().getId().equals(userId))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Category access denied");
+        }
     }
 
     private BigDecimal resolveDelta(BigDecimal amount, String categoryType) {

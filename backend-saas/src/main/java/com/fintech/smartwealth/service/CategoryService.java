@@ -1,7 +1,10 @@
 package com.fintech.smartwealth.service;
 
 import com.fintech.smartwealth.entity.Category;
+import com.fintech.smartwealth.entity.User;
 import com.fintech.smartwealth.repository.CategoryRepository;
+import com.fintech.smartwealth.repository.UserRepository;
+import com.fintech.smartwealth.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -15,17 +18,28 @@ import java.util.UUID;
 public class CategoryService {
 
     private final CategoryRepository categoryRepository;
+    private final UserRepository userRepository;
+    private final SecurityUtils securityUtils;
 
     public List<Category> findAll() {
-        return categoryRepository.findAll();
+        return securityUtils.isAdmin()
+            ? categoryRepository.findAll()
+            : categoryRepository.findByUserId(securityUtils.getCurrentUserId());
     }
 
     public Category findById(UUID id) {
-        return categoryRepository.findById(id)
+        if (securityUtils.isAdmin()) {
+            return categoryRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
+        }
+        return categoryRepository.findByIdAndUserId(id, securityUtils.getCurrentUserId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
     }
 
     public Category create(Category category) {
+        User user = userRepository.findById(securityUtils.getCurrentUserId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        category.setUser(user);
         return categoryRepository.save(category);
     }
 
@@ -37,9 +51,6 @@ public class CategoryService {
     }
 
     public void delete(UUID id) {
-        if (!categoryRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found");
-        }
-        categoryRepository.deleteById(id);
+        categoryRepository.delete(findById(id));
     }
 }

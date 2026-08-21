@@ -179,10 +179,15 @@ public class DatabaseSeeder implements CommandLineRunner {
                 String type = resolveType(record, rawAmount);
                 BigDecimal amount = rawAmount.abs();
 
-                Category category = categoryMap.computeIfAbsent(description, desc -> {
+                String categoryName = description;
+                String categoryType = type;
+                User categoryOwner = wallet.getUser();
+                String categoryKey = categoryOwner.getId() + "|" + categoryName;
+                Category category = categoryMap.computeIfAbsent(categoryKey, key -> {
                     Category c = new Category();
-                    c.setName(desc);
-                    c.setType(type);
+                    c.setName(categoryName);
+                    c.setType(categoryType);
+                    c.setUser(categoryOwner);
                     return categoryRepository.save(c);
                 });
 

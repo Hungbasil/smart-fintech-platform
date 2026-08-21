@@ -27,6 +27,11 @@ public class Category {
     @Column(nullable = false)
     private String type;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    @JsonIgnore
+    private User user;
+
     @OneToMany(mappedBy = "category")
     @JsonIgnore
     private List<Transaction> transactions = new ArrayList<>();

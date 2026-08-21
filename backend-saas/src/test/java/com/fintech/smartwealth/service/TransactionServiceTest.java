@@ -61,6 +61,7 @@ class TransactionServiceTest {
 
         wallet.setUser(new com.fintech.smartwealth.entity.User());
         wallet.getUser().setId(UUID.randomUUID());
+        category.setUser(wallet.getUser());
 
         when(walletRepository.findById(wallet.getId())).thenReturn(Optional.of(wallet));
         when(categoryRepository.findById(category.getId())).thenReturn(Optional.of(category));
