@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import { Table, TableHead, TableBody, TableRow, TableCell, TableHeaderCell, Card, CardHeader, CardBody } from '../components';
 import api from '../services/api';
+import { formatSignedAmount } from '../services/format';
 
 interface Transaction {
   id: string;
@@ -10,6 +11,7 @@ interface Transaction {
   transactionDate: string;
   walletId: string;
   categoryId: string;
+  type: 'INCOME' | 'EXPENSE';
 }
 
 interface TransactionPage {
@@ -29,8 +31,6 @@ interface CategoryOption {
   name: string;
   type: string;
 }
-
-const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
 export const Transactions: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -180,8 +180,8 @@ export const Transactions: React.FC = () => {
                     <TableRow key={transaction.id}>
                       <TableCell><span className="font-semibold text-[#17212b]">{new Date(transaction.transactionDate).toLocaleDateString()}</span><span className="block text-[11px] text-[#9aa7af]">{new Date(transaction.transactionDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></TableCell>
                       <TableCell><span className="font-bold text-[#17212b]">{transaction.description || 'Untitled transaction'}</span></TableCell>
-                      <TableCell className="text-right font-extrabold text-[#d76756]">
-                        -{currency.format(Math.abs(transaction.amount))}
+                      <TableCell className={`text-right font-extrabold ${transaction.type === 'INCOME' ? 'text-[#087f74]' : 'text-[#d76756]'}`}>
+                        {formatSignedAmount(transaction.amount, transaction.type)}
                       </TableCell>
                       <TableCell><span className="rounded-lg bg-[#edf4f2] px-2 py-1 text-[11px] font-bold text-[#075c57]">{wallets.find((wallet) => wallet.id === transaction.walletId)?.name || transaction.walletId.slice(0, 8)}</span></TableCell>
                       <TableCell><span className="text-xs text-[#71808c]">{categories.find((category) => category.id === transaction.categoryId)?.name || transaction.categoryId.slice(0, 8)}</span></TableCell>

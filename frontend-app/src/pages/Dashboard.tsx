@@ -5,6 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Card as UiCard, CardHeader, CardBody } from '../components';
 import api from '../services/api';
 import auth from '../services/auth';
+import { currency } from '../services/format';
 
 interface Wallet {
   id: string;
@@ -37,8 +38,6 @@ interface Category {
   id: string;
   type: string;
 }
-
-const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 
 export const Dashboard: React.FC = () => {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -94,7 +93,7 @@ export const Dashboard: React.FC = () => {
     const income = monthTransactions.filter((transaction) => categories.find((category) => category.id === transaction.categoryId)?.type.toUpperCase() === 'INCOME').reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
     const expenses = monthTransactions.filter((transaction) => categories.find((category) => category.id === transaction.categoryId)?.type.toUpperCase() === 'EXPENSE').reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
     return {
-      month: date.toLocaleDateString('en-US', { month: 'short' }),
+      month: date.toLocaleDateString('vi-VN', { month: 'short' }),
       income,
       expenses,
     };
@@ -126,7 +125,7 @@ export const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr_1fr]">
         <UiCard>
           <CardHeader><div className="flex items-start justify-between"><div><h3 className="section-title">Activity overview</h3><p className="section-caption mt-1">Transaction volume across the last six months</p></div><span className="rounded-lg bg-[#e4f4f0] px-2.5 py-1 text-[11px] font-bold text-[#087f74]">Live data</span></div></CardHeader>
-          <CardBody><ResponsiveContainer width="100%" height={285}><BarChart data={chartData} barSize={12} barGap={5}><CartesianGrid vertical={false} stroke="#e8efec" /><XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#9aa7af', fontSize: 12 }} /><YAxis axisLine={false} tickLine={false} tick={{ fill: '#9aa7af', fontSize: 11 }} tickFormatter={(value) => `$${value / 1000}k`} /><Tooltip cursor={{ fill: '#f4f7f6' }} formatter={(value, name) => [currency.format(Number(value)), name === 'income' ? 'Income' : 'Expenses']} contentStyle={{ border: '1px solid #e3ebe8', borderRadius: 10, boxShadow: '0 8px 20px rgba(23,33,43,.08)' }} /><Bar dataKey="income" fill="#087f74" radius={[6, 6, 2, 2]} /><Bar dataKey="expenses" fill="#d76756" radius={[6, 6, 2, 2]} /></BarChart></ResponsiveContainer></CardBody>
+          <CardBody><ResponsiveContainer width="100%" height={285}><BarChart data={chartData} barSize={12} barGap={5}><CartesianGrid vertical={false} stroke="#e8efec" /><XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#9aa7af', fontSize: 12 }} /><YAxis axisLine={false} tickLine={false} tick={{ fill: '#9aa7af', fontSize: 11 }} tickFormatter={(value) => `${Number(value) / 1000}k`} /><Tooltip cursor={{ fill: '#f4f7f6' }} formatter={(value, name) => [currency.format(Number(value)), name === 'income' ? 'Income' : 'Expenses']} contentStyle={{ border: '1px solid #e3ebe8', borderRadius: 10, boxShadow: '0 8px 20px rgba(23,33,43,.08)' }} /><Bar dataKey="income" fill="#087f74" radius={[6, 6, 2, 2]} /><Bar dataKey="expenses" fill="#d76756" radius={[6, 6, 2, 2]} /></BarChart></ResponsiveContainer></CardBody>
         </UiCard>
         <UiCard>
           <CardHeader><div><h3 className="section-title">Recent transactions</h3><p className="section-caption mt-1">Your latest financial activity</p></div></CardHeader>

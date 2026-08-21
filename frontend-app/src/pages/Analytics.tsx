@@ -1,125 +1,103 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { Card, CardHeader, CardBody } from '../components';
 import api from '../services/api';
+import { currency } from '../services/format';
 
-interface Transaction {
-  id: string;
+interface AnalyticsSummary {
+  income: number;
+  expense: number;
+  net: number;
+  transactionCount: number;
+}
+
+interface CategoryBreakdown {
+  category: string;
   amount: number;
-  description: string;
-  transactionDate: string;
-  walletId: string;
-  categoryId: string;
+  color?: string;
 }
 
-interface TransactionPage {
-  content: Transaction[];
+interface MonthlyAnalytics {
+  month: string;
+  income: number;
+  expense: number;
 }
 
-interface Category {
-  id: string;
-  name: string;
-  type: string;
-}
+const palette = ['#087f74', '#d76756', '#bd7a22', '#4c8d9a', '#8c6f56', '#6b7c70'];
 
 export const Analytics: React.FC = () => {
+  const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
+  const [categoryData, setCategoryData] = useState<CategoryBreakdown[]>([]);
+  const [monthlyData, setMonthlyData] = useState<MonthlyAnalytics[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        setLoading(true);
+        const [summaryResponse, categoryResponse, monthlyResponse] = await Promise.all([
+          api.get<AnalyticsSummary>('/analytics/summary'),
+          api.get<CategoryBreakdown[]>('/analytics/categories'),
+          api.get<MonthlyAnalytics[]>('/analytics/monthly'),
+        ]);
+        setSummary(summaryResponse.data);
+        setCategoryData(categoryResponse.data.map((item, index) => ({ ...item, color: palette[index % palette.length] })));
+        setMonthlyData(monthlyResponse.data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch analytics');
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchAnalytics();
   }, []);
-
-  const fetchAnalytics = async () => {
-    try {
-      setLoading(true);
-      const [transactionResponse, categoryResponse] = await Promise.all([
-        api.get<TransactionPage | Transaction[]>('/transactions', { params: { size: 100 } }),
-        api.get<Category[]>('/categories'),
-      ]);
-      setTransactions(Array.isArray(transactionResponse.data) ? transactionResponse.data : transactionResponse.data.content);
-      setCategories(categoryResponse.data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch analytics');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const expenseCategories = categories.filter((category) => category.type.toUpperCase() === 'EXPENSE');
-  const palette = ['#087f74', '#d76756', '#bd7a22', '#4c8d9a', '#8c6f56', '#6b7c70'];
-  const categoryData = expenseCategories.map((category, index) => ({
-    name: category.name,
-    value: transactions.filter((transaction) => transaction.categoryId === category.id).reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0),
-    color: palette[index % palette.length],
-  })).filter((category) => category.value > 0);
-
-  const trendData = Array.from({ length: 6 }, (_, index) => {
-    const date = new Date();
-    date.setMonth(date.getMonth() - (5 - index), 1);
-    const spending = transactions.filter((transaction) => {
-      const transactionDate = new Date(transaction.transactionDate);
-      const category = categories.find((item) => item.id === transaction.categoryId);
-      return category?.type.toUpperCase() === 'EXPENSE' && transactionDate.getMonth() === date.getMonth() && transactionDate.getFullYear() === date.getFullYear();
-    }).reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
-    return { month: date.toLocaleDateString('en-US', { month: 'short' }), spending };
-  });
 
   if (loading) return <div className="p-8">Loading...</div>;
   if (error) return <div className="p-8 text-red-600">Error: {error}</div>;
 
-  const totalSpending = categoryData.reduce((sum, item) => sum + item.value, 0);
-
   return (
     <div>
-      <div className="mb-8"><div className="eyebrow">Patterns and insights</div><h1 className="page-title">Analytics</h1><p className="page-subtitle">See where your money is going and how your habits change over time.</p></div>
+      <div className="mb-8"><div className="eyebrow">Patterns and insights</div><h1 className="page-title">Analytics</h1><p className="page-subtitle">Aggregated directly by PostgreSQL for the complete transaction history.</p></div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="mb-7 grid grid-cols-1 gap-4 md:grid-cols-3">
+        {[
+          { label: 'Total income', value: summary?.income ?? 0, color: 'text-[#087f74]' },
+          { label: 'Total spending', value: summary?.expense ?? 0, color: 'text-[#d76756]' },
+          { label: 'Net cash flow', value: summary?.net ?? 0, color: 'text-[#bd7a22]' },
+        ].map((metric) => (
+          <div key={metric.label} className="surface surface-pad">
+            <div className="mb-2 text-[12px] font-bold text-[#71808c]">{metric.label}</div>
+            <div className={`metric-value ${metric.color}`}>{currency.format(metric.value)}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         <Card>
-          <CardHeader>
-            <h3 className="section-title">Spending by Category</h3>
-          </CardHeader>
+          <CardHeader><h3 className="section-title">Spending by Category</h3></CardHeader>
           <CardBody>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
-                <Pie
-                  data={categoryData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {categoryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
+                <Pie data={categoryData} cx="50%" cy="50%" labelLine={false} label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`} outerRadius={80} dataKey="amount" nameKey="category">
+                  {categoryData.map((entry) => <Cell key={entry.category} fill={entry.color} />)}
                 </Pie>
-                <Tooltip />
+                <Tooltip formatter={(value) => currency.format(Number(value))} />
               </PieChart>
             </ResponsiveContainer>
-            <div className="mt-4 border-t border-[#e3ebe8] pt-4">
-              <p className="text-sm text-[#71808c]">Total spending: <span className="font-extrabold text-[#17212b]">${totalSpending.toLocaleString()}</span></p>
-            </div>
+            <div className="mt-4 border-t border-[#e3ebe8] pt-4"><p className="text-sm text-[#71808c]">Total spending: <span className="font-extrabold text-[#17212b]">{currency.format(summary?.expense ?? 0)}</span></p></div>
           </CardBody>
         </Card>
 
         <Card>
-          <CardHeader>
-            <h3 className="section-title">Spending Trend</h3>
-          </CardHeader>
+          <CardHeader><h3 className="section-title">Income and Spending Trend</h3></CardHeader>
           <CardBody>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="spending" stroke="#087f74" name="Spending" strokeWidth={2} />
+              <LineChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="month" /><YAxis /><Tooltip formatter={(value) => currency.format(Number(value))} /><Legend />
+                <Line type="monotone" dataKey="income" stroke="#087f74" name="Income" strokeWidth={2} />
+                <Line type="monotone" dataKey="expense" stroke="#d76756" name="Expenses" strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
           </CardBody>
@@ -127,26 +105,12 @@ export const Analytics: React.FC = () => {
       </div>
 
       <Card className="mt-5">
-        <CardHeader>
-          <h3 className="section-title">Category Breakdown</h3>
-        </CardHeader>
+        <CardHeader><h3 className="section-title">Category Breakdown</h3></CardHeader>
         <CardBody>
-          <div className="space-y-3">
-            {categoryData.map((item) => {
-              const percentage = totalSpending > 0 ? (item.value / totalSpending) * 100 : 0;
-              return (
-                <div key={item.name}>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-sm font-bold text-[#71808c]">{item.name}</span>
-                    <span className="text-sm font-extrabold text-[#17212b]">${item.value.toLocaleString()}</span>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-[#edf2f0]">
-                    <div className="h-2 rounded-full" style={{ width: `${percentage}%`, backgroundColor: item.color }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <div className="space-y-3">{categoryData.map((item) => {
+            const percentage = (summary?.expense ?? 0) > 0 ? (item.amount / (summary?.expense ?? 1)) * 100 : 0;
+            return <div key={item.category}><div className="mb-1 flex justify-between"><span className="text-sm font-bold text-[#71808c]">{item.category}</span><span className="text-sm font-extrabold text-[#17212b]">{currency.format(item.amount)}</span></div><div className="h-2 w-full rounded-full bg-[#edf2f0]"><div className="h-2 rounded-full" style={{ width: `${percentage}%`, backgroundColor: item.color }} /></div></div>;
+          })}</div>
         </CardBody>
       </Card>
     </div>
