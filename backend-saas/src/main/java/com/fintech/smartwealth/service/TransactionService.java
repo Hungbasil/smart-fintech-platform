@@ -198,7 +198,8 @@ public class TransactionService {
                 transaction.getDescription(),
                 transaction.getTransactionDate(),
                 transaction.getWallet().getId(),
-                transaction.getCategory().getId()
+                transaction.getCategory().getId(),
+                transaction.getCategory().getType().toUpperCase()
         );
     }
 }

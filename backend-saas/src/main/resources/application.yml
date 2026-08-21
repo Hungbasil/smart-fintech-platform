@@ -27,7 +27,8 @@ management:
     health:
       show-details: when_authorized
 seed:
-  enabled: false
+  enabled: true
+  analytics-dir: ${ANALYTICS_DATA_DIR:../analytics-brain}
 cors:
   allowed-origins: http://localhost:5173
 springdoc:

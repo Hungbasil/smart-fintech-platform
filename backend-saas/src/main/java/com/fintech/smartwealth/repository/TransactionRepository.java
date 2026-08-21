@@ -14,6 +14,65 @@ import java.util.UUID;
 
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
 
+        interface AnalyticsSummaryProjection {
+                BigDecimal getIncome();
+                BigDecimal getExpense();
+                Long getTransactionCount();
+        }
+
+        interface AnalyticsCategoryProjection {
+                String getCategory();
+                BigDecimal getAmount();
+        }
+
+        interface AnalyticsMonthlyProjection {
+                String getMonth();
+                BigDecimal getIncome();
+                BigDecimal getExpense();
+        }
+
+        @Query(value = """
+                        SELECT
+                                COALESCE(SUM(CASE WHEN UPPER(c.type) = 'INCOME' THEN t.amount ELSE 0 END), 0) AS income,
+                                COALESCE(SUM(CASE WHEN UPPER(c.type) = 'EXPENSE' THEN t.amount ELSE 0 END), 0) AS expense,
+                                COUNT(t.id) AS transactionCount
+                        FROM transactions t
+                        JOIN wallets w ON w.id = t.wallet_id
+                        JOIN categories c ON c.id = t.category_id
+                        WHERE (:userId IS NULL OR w.user_id = :userId)
+                        """, nativeQuery = true)
+        AnalyticsSummaryProjection getAnalyticsSummary(@Param("userId") UUID userId);
+
+        @Query(value = """
+                        SELECT c.name AS category, COALESCE(SUM(t.amount), 0) AS amount
+                        FROM transactions t
+                        JOIN wallets w ON w.id = t.wallet_id
+                        JOIN categories c ON c.id = t.category_id
+                        WHERE UPPER(c.type) = 'EXPENSE'
+                          AND (:userId IS NULL OR w.user_id = :userId)
+                        GROUP BY c.name
+                        HAVING SUM(t.amount) > 0
+                        ORDER BY SUM(t.amount) DESC
+                        """, nativeQuery = true)
+        java.util.List<AnalyticsCategoryProjection> getExpenseByCategory(@Param("userId") UUID userId);
+
+        @Query(value = """
+                        SELECT TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM') AS month,
+                                   COALESCE(SUM(CASE WHEN UPPER(c.type) = 'INCOME' THEN t.amount ELSE 0 END), 0) AS income,
+                                   COALESCE(SUM(CASE WHEN UPPER(c.type) = 'EXPENSE' THEN t.amount ELSE 0 END), 0) AS expense
+                        FROM transactions t
+                        JOIN wallets w ON w.id = t.wallet_id
+                        JOIN categories c ON c.id = t.category_id
+                        WHERE t.transaction_date >= :fromDate
+                          AND t.transaction_date < :toDate
+                          AND (:userId IS NULL OR w.user_id = :userId)
+                        GROUP BY DATE_TRUNC('month', t.transaction_date)
+                        ORDER BY DATE_TRUNC('month', t.transaction_date)
+                        """, nativeQuery = true)
+        java.util.List<AnalyticsMonthlyProjection> getMonthlyAnalytics(@Param("userId") UUID userId,
+                                                                                                                                        @Param("fromDate") LocalDateTime fromDate,
+                                                                                                                                        @Param("toDate") LocalDateTime toDate);
+
         @Query("""
                         SELECT t
                         FROM Transaction t

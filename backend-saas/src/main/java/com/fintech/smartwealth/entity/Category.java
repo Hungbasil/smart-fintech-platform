@@ -1,6 +1,7 @@
 package com.fintech.smartwealth.entity;
 
 import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -27,5 +28,6 @@ public class Category {
     private String type;
 
     @OneToMany(mappedBy = "category")
+    @JsonIgnore
     private List<Transaction> transactions = new ArrayList<>();
 }

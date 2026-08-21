@@ -25,7 +25,8 @@ management:
     health:
       show-details: when_authorized
 seed:
-  enabled: false
+  enabled: true
+  analytics-dir: ${ANALYTICS_DATA_DIR:/app/analytics-brain}
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
 jwt:

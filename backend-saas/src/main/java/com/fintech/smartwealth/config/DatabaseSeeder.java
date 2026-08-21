@@ -17,6 +17,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,6 +48,7 @@ public class DatabaseSeeder implements CommandLineRunner {
             DateTimeFormatter.ISO_LOCAL_DATE_TIME,
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"),
+            DateTimeFormatter.ofPattern("M/d/yyyy"),
             DateTimeFormatter.ofPattern("yyyy-MM-dd")
     };
 
@@ -55,6 +57,9 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final CategoryRepository categoryRepository;
     private final TransactionRepository transactionRepository;
     private final PasswordEncoder passwordEncoder;
+
+    @Value("${seed.analytics-dir:../analytics-brain}")
+    private String analyticsDir;
 
     private final Map<UUID, Wallet> csvWalletMap = new HashMap<>();
 
@@ -235,12 +240,12 @@ public class DatabaseSeeder implements CommandLineRunner {
             return LocalDateTime.now();
         }
         String trimmed = value.trim();
-        for (int i = 0; i < DATE_FORMATTERS.length; i++) {
+        for (DateTimeFormatter formatter : DATE_FORMATTERS) {
             try {
-                if (i == DATE_FORMATTERS.length - 1) {
-                    return LocalDate.parse(trimmed, DATE_FORMATTERS[i]).atStartOfDay();
+                if (formatter.equals(DATE_FORMATTERS[3]) || formatter.equals(DATE_FORMATTERS[4])) {
+                    return LocalDate.parse(trimmed, formatter).atStartOfDay();
                 }
-                return LocalDateTime.parse(trimmed, DATE_FORMATTERS[i]);
+                return LocalDateTime.parse(trimmed, formatter);
             } catch (Exception ignored) {
                 // try next format
             }
@@ -288,6 +293,11 @@ public class DatabaseSeeder implements CommandLineRunner {
     }
 
     private Path resolveAnalyticsDir() {
+        Path configuredDir = Path.of(analyticsDir).toAbsolutePath().normalize();
+        if (Files.isDirectory(configuredDir)) {
+            return configuredDir;
+        }
+
         Path cwd = Path.of(System.getProperty("user.dir"));
         List<Path> candidates = List.of(
                 cwd.resolve("../analytics-brain"),
