@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Pencil, Plus, Tag, Trash2, X } from 'lucide-react';
 import { Card, CardBody, CardHeader } from '../components';
 import api from '../services/api';
+import { getApiErrorMessage, toast } from '../services/notifications';
 
 interface Category {
   id: string;
@@ -62,8 +63,11 @@ export const Categories: React.FC = () => {
       }
       setIsOpen(false);
       await loadCategories();
+      toast.success(editingId ? 'Category updated' : 'Category created');
     } catch (err: any) {
-      setFormError(err?.response?.data?.message || 'Unable to save category');
+      const message = getApiErrorMessage(err, 'Unable to save category');
+      setFormError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -74,8 +78,11 @@ export const Categories: React.FC = () => {
     try {
       await api.delete(`/categories/${id}`);
       setCategories((current) => current.filter((category) => category.id !== id));
+      toast.success('Category deleted');
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Unable to delete category');
+      const message = getApiErrorMessage(err, 'Unable to delete category');
+      setError(message);
+      toast.error(message);
     }
   };
 

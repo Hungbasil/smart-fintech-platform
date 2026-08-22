@@ -3,6 +3,7 @@ import { Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react
 import { Table, TableHead, TableBody, TableRow, TableCell, TableHeaderCell, Card, CardHeader, CardBody } from '../components';
 import api from '../services/api';
 import { formatSignedAmount } from '../services/format';
+import { getApiErrorMessage, toast } from '../services/notifications';
 
 interface Transaction {
   id: string;
@@ -56,7 +57,7 @@ export const Transactions: React.FC = () => {
     const fetchTransactions = async () => {
       try {
         setLoading(true);
-        const response = await api.get<TransactionPage | Transaction[]>('/transactions', { params: { page: page - 1, size: pageSize, ...filters } });
+        const response = await api.get<TransactionPage | Transaction[]>('/transactions', { params: { page: page - 1, size: pageSize, search: search.trim() || undefined, ...filters } });
         if (Array.isArray(response.data)) {
           setTransactions(response.data);
           setTotalElements(response.data.length);
@@ -74,7 +75,7 @@ export const Transactions: React.FC = () => {
     };
 
     fetchTransactions();
-  }, [page, reloadToken, filters]);
+  }, [page, reloadToken, filters, search]);
 
   useEffect(() => {
     const loadFormOptions = async () => {
@@ -114,8 +115,11 @@ export const Transactions: React.FC = () => {
       setEditingTransactionId(null);
       setForm({ description: '', amount: '', transactionDate: new Date().toISOString().slice(0, 16), walletId: '', categoryId: '' });
       setReloadToken((value) => value + 1);
+      toast.success(editingTransactionId ? 'Transaction updated' : 'Transaction added');
     } catch (err: any) {
-      setFormError(err?.response?.data?.message || 'Unable to create transaction');
+      const message = getApiErrorMessage(err, 'Unable to save transaction');
+      setFormError(message);
+      toast.error(message);
     } finally {
       setIsSaving(false);
     }
@@ -142,8 +146,11 @@ export const Transactions: React.FC = () => {
     try {
       await api.delete(`/transactions/${id}`);
       setReloadToken((value) => value + 1);
+      toast.success('Transaction deleted');
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Unable to delete transaction');
+      const message = getApiErrorMessage(err, 'Unable to delete transaction');
+      setError(message);
+      toast.error(message);
     } finally {
       setDeletingId(null);
     }
@@ -172,11 +179,7 @@ export const Transactions: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {(() => {
-                  const filtered = transactions.filter((t) =>
-                    `${t.description} ${t.walletId} ${t.categoryId}`.toLowerCase().includes(search.toLowerCase())
-                  );
-                  return filtered.map((transaction) => (
+                {transactions.map((transaction) => (
                     <TableRow key={transaction.id}>
                       <TableCell><span className="font-semibold text-[#17212b]">{new Date(transaction.transactionDate).toLocaleDateString()}</span><span className="block text-[11px] text-[#9aa7af]">{new Date(transaction.transactionDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></TableCell>
                       <TableCell><span className="font-bold text-[#17212b]">{transaction.description || 'Untitled transaction'}</span></TableCell>
@@ -187,8 +190,7 @@ export const Transactions: React.FC = () => {
                       <TableCell><span className="text-xs text-[#71808c]">{categories.find((category) => category.id === transaction.categoryId)?.name || transaction.categoryId.slice(0, 8)}</span></TableCell>
                       <TableCell><div className="flex justify-end gap-1"><button aria-label="Edit transaction" title="Edit transaction" onClick={() => openEditModal(transaction)} className="rounded-lg p-2 text-[#9aa7af] transition hover:bg-[#e4f4f0] hover:text-[#087f74]"><Pencil size={15} /></button><button aria-label="Delete transaction" title="Delete transaction" disabled={deletingId === transaction.id} onClick={() => deleteTransaction(transaction.id)} className="rounded-lg p-2 text-[#9aa7af] transition hover:bg-[#fff1ef] hover:text-[#d76756] disabled:opacity-40"><Trash2 size={15} /></button></div></TableCell>
                     </TableRow>
-                  ));
-                })()}
+                  ))}
               </TableBody>
             </Table>
             {transactions.length === 0 && <div className="py-12 text-center"><p className="font-bold text-[#17212b]">No transactions found</p><p className="mt-1 text-sm text-[#9aa7af]">Your latest activity will appear here.</p></div>}

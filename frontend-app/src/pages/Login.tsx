@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import auth from '../services/auth';
+import { getApiErrorMessage, toast } from '../services/notifications';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -9,9 +10,12 @@ export const Login: React.FC = () => {
     e.preventDefault();
     try {
       await auth.login({ email, password });
+      toast.success('Signed in successfully');
       window.location.replace('/');
     } catch (err: any) {
-      setError(err?.response?.data?.message || err.message || 'Login failed');
+      const message = getApiErrorMessage(err, 'Login failed');
+      setError(message);
+      toast.error(message);
     }
   };
 

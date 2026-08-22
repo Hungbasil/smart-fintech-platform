@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import auth from '../services/auth';
+import { getApiErrorMessage, toast } from '../services/notifications';
 
 export const Register: React.FC = () => {
   const [fullName, setFullName] = useState('');
@@ -13,9 +14,12 @@ export const Register: React.FC = () => {
     e.preventDefault();
     try {
       await auth.register({ fullName, email, password });
+      toast.success('Account created. You can sign in now.');
       navigate('/login', { replace: true });
     } catch (err: any) {
-      setError(err?.response?.data?.message || err.message || 'Registration failed');
+      const message = getApiErrorMessage(err, 'Registration failed');
+      setError(message);
+      toast.error(message);
     }
   };
 

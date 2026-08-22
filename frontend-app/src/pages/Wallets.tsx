@@ -3,6 +3,7 @@ import { Plus, Trash2, WalletCards } from 'lucide-react';
 import api from '../services/api';
 import { Card, CardBody } from '../components';
 import { currency } from '../services/format';
+import { getApiErrorMessage, toast } from '../services/notifications';
 
 interface Wallet {
   id: string;
@@ -40,8 +41,11 @@ export const Wallets: React.FC = () => {
       setWallets((prev) => [res.data, ...prev]);
       setName('');
       setBalance(0);
+      toast.success('Wallet created successfully');
     } catch (err) {
-      console.error(err);
+      const message = getApiErrorMessage(err, 'Unable to create wallet');
+      setError(message);
+      toast.error(message);
     }
   };
 
@@ -49,8 +53,11 @@ export const Wallets: React.FC = () => {
     try {
       await api.delete(`/wallets/${id}`);
       setWallets((prev) => prev.filter((w) => w.id !== id));
+      toast.success('Wallet deleted');
     } catch (err) {
-      console.error(err);
+      const message = getApiErrorMessage(err, 'Unable to delete wallet');
+      setError(message);
+      toast.error(message);
     }
   };
 
