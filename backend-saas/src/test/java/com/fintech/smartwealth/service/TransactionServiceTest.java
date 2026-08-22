@@ -80,4 +80,41 @@ class TransactionServiceTest {
         assertThat(wallet.getBalance()).isEqualByComparingTo("75.00");
         verify(walletRepository).save(wallet);
     }
+
+    @Test
+    void createIncomeShouldIncreaseWalletBalance() {
+        Wallet wallet = new Wallet();
+        wallet.setId(UUID.randomUUID());
+        wallet.setBalance(new BigDecimal("100.00"));
+
+        Category category = new Category();
+        category.setId(UUID.randomUUID());
+        category.setType("INCOME");
+        wallet.setUser(new com.fintech.smartwealth.entity.User());
+        wallet.getUser().setId(UUID.randomUUID());
+        category.setUser(wallet.getUser());
+
+        CreateTransactionRequest request = new CreateTransactionRequest();
+        request.setAmount(new BigDecimal("25.00"));
+        request.setDescription("Salary");
+        request.setTransactionDate(java.time.LocalDateTime.now());
+        request.setWalletId(wallet.getId());
+        request.setCategoryId(category.getId());
+
+        when(walletRepository.findById(wallet.getId())).thenReturn(Optional.of(wallet));
+        when(categoryRepository.findById(category.getId())).thenReturn(Optional.of(category));
+        when(securityUtils.isAdmin()).thenReturn(false);
+        when(securityUtils.getCurrentUserId()).thenReturn(wallet.getUser().getId());
+        when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
+            Transaction saved = invocation.getArgument(0);
+            saved.setId(UUID.randomUUID());
+            return saved;
+        });
+        when(walletRepository.save(any(Wallet.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        transactionService.create(request);
+
+        assertThat(wallet.getBalance()).isEqualByComparingTo("125.00");
+        verify(walletRepository).save(wallet);
+    }
 }
