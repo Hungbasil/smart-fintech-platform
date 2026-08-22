@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import auth from '../services/auth';
-import { BarChart3, ChevronDown, LayoutDashboard, LogOut, ReceiptText, Tag, WalletCards } from 'lucide-react';
+import { BarChart3, CalendarClock, ChevronDown, LayoutDashboard, LogOut, ReceiptText, Tag, WalletCards, Target } from 'lucide-react';
 
 const navigation = [
   { label: 'Overview', to: '/', icon: LayoutDashboard },
@@ -9,6 +9,8 @@ const navigation = [
   { label: 'Wallets', to: '/wallets', icon: WalletCards },
   { label: 'Analytics', to: '/analytics', icon: BarChart3 },
   { label: 'Categories', to: '/categories', icon: Tag },
+  { label: 'Budgets', to: '/budgets', icon: Target },
+  { label: 'Recurring', to: '/recurring', icon: CalendarClock },
 ];
 
 export const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {

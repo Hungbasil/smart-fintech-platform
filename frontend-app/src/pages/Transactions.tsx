@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Download, FileUp, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import { Table, TableHead, TableBody, TableRow, TableCell, TableHeaderCell, Card, CardHeader, CardBody } from '../components';
 import api from '../services/api';
 import { formatSignedAmount } from '../services/format';
@@ -51,6 +51,7 @@ export const Transactions: React.FC = () => {
   const [reloadToken, setReloadToken] = useState(0);
   const [filters, setFilters] = useState({ type: '', walletId: '', categoryId: '' });
   const [form, setForm] = useState({ description: '', amount: '', transactionDate: new Date().toISOString().slice(0, 16), walletId: '', categoryId: '' });
+  const importInputRef = useRef<HTMLInputElement>(null);
   const pageSize = 10;
 
   useEffect(() => {
@@ -156,12 +157,42 @@ export const Transactions: React.FC = () => {
     }
   };
 
+  const exportTransactions = async () => {
+    try {
+      const response = await api.get<TransactionPage>('/transactions', { params: { page: 0, size: 10000, ...filters, search: search.trim() || undefined } });
+      const rows = response.data.content;
+      const csv = [['Date', 'Description', 'Amount', 'Type', 'Wallet ID', 'Category ID'], ...rows.map((transaction) => [transaction.transactionDate, transaction.description, transaction.amount, transaction.type, transaction.walletId, transaction.categoryId])]
+        .map((row) => row.map((value) => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+      link.download = `transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+      link.click(); URL.revokeObjectURL(link.href); toast.success('Report exported');
+    } catch (err) { toast.error(getApiErrorMessage(err, 'Unable to export report')); }
+  };
+
+  const importTransactions = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const [headerLine, ...lines] = text.split(/\r?\n/).filter(Boolean);
+      const headers = headerLine.split(',').map((header) => header.trim().replace(/^"|"$/g, '').toLowerCase().replace(/\s+/g, ''));
+      const indexOf = (...names: string[]) => names.map((name) => headers.indexOf(name)).find((index) => index >= 0) ?? -1;
+      const indexes = { date: indexOf('date', 'transactiondate'), description: indexOf('description', 'desc'), amount: indexOf('amount'), walletId: indexOf('walletid', 'wallet_id'), categoryId: indexOf('categoryid', 'category_id') };
+      if (indexes.amount < 0 || indexes.walletId < 0 || indexes.categoryId < 0) throw new Error('CSV needs amount, walletId and categoryId columns');
+      const parseLine = (line: string) => line.match(/("(?:[^"]|"")*"|[^,]*)/g)?.filter((_, index, values) => index < values.length - 1).map((value) => value.trim().replace(/^"|"$/g, '').replace(/""/g, '"')) || [];
+      for (const line of lines) { const values = parseLine(line); await api.post('/transactions', { amount: Math.abs(Number(values[indexes.amount])), description: values[indexes.description] || 'Imported transaction', transactionDate: values[indexes.date] || new Date().toISOString().slice(0, 16), walletId: values[indexes.walletId], categoryId: values[indexes.categoryId] }); }
+      setReloadToken((value) => value + 1); toast.success(`${lines.length} transaction${lines.length === 1 ? '' : 's'} imported`);
+    } catch (err) { toast.error(getApiErrorMessage(err, 'Unable to import CSV')); }
+  };
+
   if (loading) return <div className="p-8">Loading...</div>;
   if (error) return <div className="p-8 text-red-600">Error: {error}</div>;
 
   return (
     <div>
-      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="eyebrow">Money movement</div><h1 className="page-title">Transactions</h1><p className="page-subtitle">Review and understand every movement across your wallets.</p></div><button onClick={openCreateModal} className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#087f74] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#075c57]"><Plus size={17} />Add transaction</button></div>
+      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="eyebrow">Money movement</div><h1 className="page-title">Transactions</h1><p className="page-subtitle">Review and understand every movement across your wallets.</p></div><div className="flex flex-wrap gap-2"><button onClick={exportTransactions} className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#e3ebe8] bg-white px-4 py-2.5 text-sm font-bold text-[#71808c] hover:bg-[#f4f7f6]"><Download size={17} />Export CSV</button><button onClick={() => importInputRef.current?.click()} className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#e3ebe8] bg-white px-4 py-2.5 text-sm font-bold text-[#71808c] hover:bg-[#f4f7f6]"><FileUp size={17} />Import CSV</button><input ref={importInputRef} type="file" accept=".csv,text/csv" onChange={importTransactions} className="hidden" /><button onClick={openCreateModal} className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#087f74] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#075c57]"><Plus size={17} />Add transaction</button></div></div>
 
       <Card>
         <CardHeader><div className="flex items-center justify-between"><div><h3 className="section-title">All transactions</h3><p className="section-caption mt-1">{totalElements} records in your workspace</p></div><span className="hidden items-center gap-2 rounded-lg border border-[#e3ebe8] px-3 py-2 text-xs font-bold text-[#71808c] sm:flex"><SlidersHorizontal size={14} />Filters below</span></div></CardHeader>
