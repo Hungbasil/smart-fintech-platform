@@ -91,6 +91,20 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             """)
     BigDecimal sumExpenseByWalletId(@Param("walletId") UUID walletId);
 
+                @Query("""
+                                                SELECT COALESCE(SUM(t.amount), 0)
+                                                FROM Transaction t
+                                                WHERE t.wallet.user.id = :userId
+                                                        AND t.category.id = :categoryId
+                                                        AND UPPER(t.category.type) = 'EXPENSE'
+                                                        AND t.transactionDate >= :fromDate
+                                                        AND t.transactionDate < :toDate
+                                                """)
+                BigDecimal sumExpenseByUserAndCategoryBetween(@Param("userId") UUID userId,
+                                                                                                                                                                                                         @Param("categoryId") UUID categoryId,
+                                                                                                                                                                                                         @Param("fromDate") LocalDateTime fromDate,
+                                                                                                                                                                                                         @Param("toDate") LocalDateTime toDate);
+
     @Query("""
             SELECT t
             FROM Transaction t
