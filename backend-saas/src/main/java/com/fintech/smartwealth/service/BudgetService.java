@@ -45,7 +45,7 @@ public class BudgetService {
     public BudgetResponse save(BudgetRequest request) {
         UUID userId = securityUtils.getCurrentUserId();
         User user = userRepository.findById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        Category category = categoryRepository.findByIdAndUserId(request.getCategoryId(), userId)
+        Category category = categoryRepository.findAvailableById(request.getCategoryId(), userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
         if (!"EXPENSE".equalsIgnoreCase(category.getType())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Budgets are only available for expense categories");

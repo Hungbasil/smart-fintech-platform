@@ -24,7 +24,7 @@ public class CategoryService {
     public List<Category> findAll() {
         return securityUtils.isAdmin()
             ? categoryRepository.findAll()
-            : categoryRepository.findByUserId(securityUtils.getCurrentUserId());
+            : categoryRepository.findAvailableForUser(securityUtils.getCurrentUserId());
     }
 
     public Category findById(UUID id) {
@@ -32,7 +32,7 @@ public class CategoryService {
             return categoryRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
         }
-        return categoryRepository.findByIdAndUserId(id, securityUtils.getCurrentUserId())
+        return categoryRepository.findAvailableById(id, securityUtils.getCurrentUserId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
     }
 
@@ -44,13 +44,26 @@ public class CategoryService {
     }
 
     public Category update(UUID id, Category category) {
-        Category existing = findById(id);
+        Category existing = categoryRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
+        requirePersonalOwnership(existing);
         existing.setName(category.getName());
         existing.setType(category.getType());
         return categoryRepository.save(existing);
     }
 
     public void delete(UUID id) {
-        categoryRepository.delete(findById(id));
+        Category existing = categoryRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
+        requirePersonalOwnership(existing);
+        categoryRepository.delete(existing);
+    }
+
+    private void requirePersonalOwnership(Category category) {
+        if (!securityUtils.isAdmin()
+                && (category.getUser() == null
+                || !category.getUser().getId().equals(securityUtils.getCurrentUserId()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Global or another user's category cannot be modified");
+        }
     }
 }

@@ -2,6 +2,7 @@ package com.fintech.smartwealth.entity;
 
 import jakarta.persistence.*;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -31,6 +32,11 @@ public class Category {
     @JoinColumn(name = "user_id")
     @JsonIgnore
     private User user;
+
+    @JsonProperty("userId")
+    public UUID getUserId() {
+        return user == null ? null : user.getId();
+    }
 
     @OneToMany(mappedBy = "category")
     @JsonIgnore

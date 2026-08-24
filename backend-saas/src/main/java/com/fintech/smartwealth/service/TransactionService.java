@@ -241,7 +241,8 @@ public class TransactionService {
 
     private void validateCategoryOwnership(Category category, UUID userId) {
         if (!securityUtils.isAdmin()
-                && (category.getUser() == null || !category.getUser().getId().equals(userId))) {
+            && category.getUser() != null
+            && !category.getUser().getId().equals(userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Category access denied");
         }
     }
