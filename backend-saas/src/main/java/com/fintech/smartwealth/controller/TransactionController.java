@@ -2,6 +2,7 @@ package com.fintech.smartwealth.controller;
 
 import com.fintech.smartwealth.dto.CreateTransactionRequest;
 import com.fintech.smartwealth.dto.TransactionResponse;
+import com.fintech.smartwealth.dto.TransferRequest;
 import com.fintech.smartwealth.dto.UpdateTransactionRequest;
 import com.fintech.smartwealth.service.TransactionService;
 import jakarta.validation.Valid;
@@ -50,6 +51,12 @@ public class TransactionController {
     @ResponseStatus(HttpStatus.CREATED)
     public TransactionResponse create(@Valid @RequestBody CreateTransactionRequest request) {
         return transactionService.create(request);
+    }
+
+    @PostMapping("/transfer")
+    @ResponseStatus(HttpStatus.CREATED)
+    public TransactionResponse transfer(@Valid @RequestBody TransferRequest request) {
+        return transactionService.transferFunds(request);
     }
 
     @PutMapping("/{id}")

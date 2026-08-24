@@ -2,6 +2,7 @@ package com.fintech.smartwealth.service;
 
 import com.fintech.smartwealth.dto.CreateTransactionRequest;
 import com.fintech.smartwealth.dto.TransactionResponse;
+import com.fintech.smartwealth.dto.TransferRequest;
 import com.fintech.smartwealth.dto.UpdateTransactionRequest;
 import com.fintech.smartwealth.entity.Category;
 import com.fintech.smartwealth.entity.Transaction;
@@ -86,6 +87,7 @@ public class TransactionService {
         transaction.setTransactionDate(request.getTransactionDate());
         transaction.setWallet(wallet);
         transaction.setCategory(category);
+        transaction.setTransactionType("STANDARD");
 
         BigDecimal delta = resolveDelta(transaction.getAmount(), category.getType());
         BigDecimal updatedBalance = wallet.getBalance().add(delta);
@@ -99,9 +101,56 @@ public class TransactionService {
     }
 
     @Transactional
+    public TransactionResponse transferFunds(TransferRequest request) {
+        if (request.getFromWalletId().equals(request.getToWalletId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Source and destination wallets must be different");
+        }
+
+        Wallet fromWallet = walletRepository.findById(request.getFromWalletId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Source wallet not found"));
+        Wallet toWallet = walletRepository.findById(request.getToWalletId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Destination wallet not found"));
+
+        if (!securityUtils.isAdmin()) {
+            UUID currentUserId = securityUtils.getCurrentUserId();
+            if (!fromWallet.getUser().getId().equals(currentUserId)
+                    || !toWallet.getUser().getId().equals(currentUserId)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+            }
+        }
+
+        if (fromWallet.getBalance().compareTo(request.getAmount()) < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient wallet balance");
+        }
+
+        Category transferCategory = categoryRepository.findByUserIdAndName(fromWallet.getUser().getId(), "Transfer")
+                .orElseGet(() -> {
+                    Category category = new Category();
+                    category.setName("Transfer");
+                    category.setType("TRANSFER");
+                    category.setUser(fromWallet.getUser());
+                    return categoryRepository.save(category);
+                });
+
+        fromWallet.setBalance(fromWallet.getBalance().subtract(request.getAmount()));
+        toWallet.setBalance(toWallet.getBalance().add(request.getAmount()));
+        walletRepository.save(fromWallet);
+        walletRepository.save(toWallet);
+
+        Transaction outgoing = createTransferTransaction(fromWallet, transferCategory, request, "Transfer out");
+        Transaction incoming = createTransferTransaction(toWallet, transferCategory, request, "Transfer in");
+        transactionRepository.save(outgoing);
+        return toResponse(transactionRepository.save(incoming));
+    }
+
+    @Transactional
     public TransactionResponse update(UUID id, UpdateTransactionRequest request) {
         Transaction existing = transactionRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found"));
+
+        if ("TRANSFER".equalsIgnoreCase(existing.getTransactionType())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Transfer transactions cannot be updated");
+        }
 
         Wallet oldWallet = walletRepository.findById(existing.getWallet().getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found"));
@@ -154,6 +203,10 @@ public class TransactionService {
         Transaction transaction = transactionRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found"));
 
+        if ("TRANSFER".equalsIgnoreCase(transaction.getTransactionType())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Transfer transactions cannot be deleted");
+        }
+
         Wallet wallet = walletRepository.findById(transaction.getWallet().getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found"));
 
@@ -202,6 +255,17 @@ public class TransactionService {
                 : amount;
     }
 
+    private Transaction createTransferTransaction(Wallet wallet, Category category, TransferRequest request, String direction) {
+        Transaction transaction = new Transaction();
+        transaction.setAmount(request.getAmount());
+        transaction.setDescription(request.getDescription() + " (" + direction + ")");
+        transaction.setTransactionDate(request.getTransactionDate());
+        transaction.setWallet(wallet);
+        transaction.setCategory(category);
+        transaction.setTransactionType("TRANSFER");
+        return transaction;
+    }
+
     private TransactionResponse toResponse(Transaction transaction) {
         return new TransactionResponse(
                 transaction.getId(),
@@ -210,7 +274,9 @@ public class TransactionService {
                 transaction.getTransactionDate(),
                 transaction.getWallet().getId(),
                 transaction.getCategory().getId(),
-                transaction.getCategory().getType().toUpperCase()
+                "TRANSFER".equalsIgnoreCase(transaction.getTransactionType())
+                    ? "TRANSFER"
+                    : transaction.getCategory().getType().toUpperCase()
         );
     }
 }

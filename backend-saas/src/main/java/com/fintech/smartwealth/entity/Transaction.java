@@ -28,6 +28,9 @@ public class Transaction {
     @Column(nullable = false)
     private LocalDateTime transactionDate;
 
+    @Column(name = "transaction_type", nullable = false)
+    private String transactionType = "STANDARD";
+
     @ManyToOne
     @JoinColumn(name = "wallet_id", nullable = false)
     private Wallet wallet;

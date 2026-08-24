@@ -35,11 +35,12 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
                         SELECT
                                 COALESCE(SUM(CASE WHEN UPPER(c.type) = 'INCOME' THEN t.amount ELSE 0 END), 0) AS income,
                                 COALESCE(SUM(CASE WHEN UPPER(c.type) = 'EXPENSE' THEN t.amount ELSE 0 END), 0) AS expense,
-                                COUNT(t.id) AS transactionCount
+                                COUNT(CASE WHEN t.transaction_type <> 'TRANSFER' THEN t.id END) AS transactionCount
                         FROM transactions t
                         JOIN wallets w ON w.id = t.wallet_id
                         JOIN categories c ON c.id = t.category_id
-                        WHERE (:userId IS NULL OR w.user_id = :userId)
+                                                                                                WHERE t.transaction_type <> 'TRANSFER'
+                                                                                                        AND (:userId IS NULL OR w.user_id = :userId)
                         """, nativeQuery = true)
         AnalyticsSummaryProjection getAnalyticsSummary(@Param("userId") UUID userId);
 
@@ -48,7 +49,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
                         FROM transactions t
                         JOIN wallets w ON w.id = t.wallet_id
                         JOIN categories c ON c.id = t.category_id
-                        WHERE UPPER(c.type) = 'EXPENSE'
+                                                                                                WHERE UPPER(c.type) = 'EXPENSE'
+                                                                                                        AND t.transaction_type <> 'TRANSFER'
                           AND (:userId IS NULL OR w.user_id = :userId)
                         GROUP BY c.name
                         HAVING SUM(t.amount) > 0
@@ -63,7 +65,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
                         FROM transactions t
                         JOIN wallets w ON w.id = t.wallet_id
                         JOIN categories c ON c.id = t.category_id
-                        WHERE t.transaction_date >= :fromDate
+                                                                                                WHERE t.transaction_type <> 'TRANSFER'
+                                                                                                        AND t.transaction_date >= :fromDate
                           AND t.transaction_date < :toDate
                           AND (:userId IS NULL OR w.user_id = :userId)
                         GROUP BY DATE_TRUNC('month', t.transaction_date)
@@ -88,6 +91,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             FROM Transaction t
             WHERE t.wallet.id = :walletId
               AND UPPER(t.category.type) = 'EXPENSE'
+              AND t.transactionType <> 'TRANSFER'
             """)
     BigDecimal sumExpenseByWalletId(@Param("walletId") UUID walletId);
 
@@ -97,6 +101,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
                                                 WHERE t.wallet.user.id = :userId
                                                         AND t.category.id = :categoryId
                                                         AND UPPER(t.category.type) = 'EXPENSE'
+                                                        AND t.transactionType <> 'TRANSFER'
                                                         AND t.transactionDate >= :fromDate
                                                         AND t.transactionDate < :toDate
                                                 """)
