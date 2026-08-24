@@ -39,6 +39,7 @@ export const Transactions: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [debouncedKeyword, setDebouncedKeyword] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalElements, setTotalElements] = useState(0);
@@ -58,10 +59,18 @@ export const Transactions: React.FC = () => {
   const pageSize = 10;
 
   useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedKeyword(search.trim());
+      setPage(1);
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
     const fetchTransactions = async () => {
       try {
         setLoading(true);
-        const response = await api.get<TransactionPage | Transaction[]>('/transactions', { params: { page: page - 1, size: pageSize, search: search.trim() || undefined, ...filters } });
+        const response = await api.get<TransactionPage | Transaction[]>('/transactions', { params: { page: page - 1, size: pageSize, keyword: debouncedKeyword || undefined, ...filters } });
         if (Array.isArray(response.data)) {
           setTransactions(response.data);
           setTotalElements(response.data.length);
@@ -79,7 +88,7 @@ export const Transactions: React.FC = () => {
     };
 
     fetchTransactions();
-  }, [page, reloadToken, filters, search]);
+  }, [page, reloadToken, filters, debouncedKeyword]);
 
   useEffect(() => {
     const loadFormOptions = async () => {
@@ -200,7 +209,7 @@ export const Transactions: React.FC = () => {
 
   const exportTransactions = async () => {
     try {
-      const response = await api.get<TransactionPage>('/transactions', { params: { page: 0, size: 10000, ...filters, search: search.trim() || undefined } });
+      const response = await api.get<TransactionPage>('/transactions', { params: { page: 0, size: 10000, ...filters, keyword: debouncedKeyword || undefined } });
       const rows = response.data.content;
       const csv = [['Date', 'Description', 'Amount', 'Type', 'Wallet ID', 'Category ID'], ...rows.map((transaction) => [transaction.transactionDate, transaction.description, transaction.amount, transaction.type, transaction.walletId, transaction.categoryId])]
         .map((row) => row.map((value) => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
