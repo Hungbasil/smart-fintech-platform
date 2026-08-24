@@ -33,6 +33,39 @@ export const getBudgets = () => api.get('/budgets');
 export const saveBudget = (request: BudgetRequest) => api.post('/budgets', request);
 export const deleteBudget = (id: string) => api.delete(`/budgets/${id}`);
 
+export interface AnalyticsQuery {
+  walletId?: string;
+  fromDate?: string;
+  toDate?: string;
+}
+
+export interface AnalyticsSummary {
+  income: number;
+  expense: number;
+  net: number;
+  transactionCount: number;
+}
+
+export interface CategorySpending {
+  category: string;
+  amount: number;
+}
+
+export interface MonthlyTrend {
+  month: string;
+  income: number;
+  expense: number;
+}
+
+export const getAnalyticsSummary = (query?: AnalyticsQuery) =>
+  api.get<AnalyticsSummary>('/analytics/summary', { params: query });
+
+export const getAnalyticsCategories = (query?: AnalyticsQuery) =>
+  api.get<CategorySpending[]>('/analytics/categories', { params: query });
+
+export const getAnalyticsMonthly = (query?: AnalyticsQuery) =>
+  api.get<MonthlyTrend[]>('/analytics/monthly', { params: query });
+
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('authToken');

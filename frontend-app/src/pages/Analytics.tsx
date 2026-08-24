@@ -1,15 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { Card, CardHeader, CardBody } from '../components';
-import api from '../services/api';
+import { getAnalyticsCategories, getAnalyticsMonthly, getAnalyticsSummary, type AnalyticsSummary } from '../services/api';
 import { currency } from '../services/format';
-
-interface AnalyticsSummary {
-  income: number;
-  expense: number;
-  net: number;
-  transactionCount: number;
-}
+import { getApiErrorMessage } from '../services/notifications';
 
 interface CategoryBreakdown {
   category: string;
@@ -37,15 +31,15 @@ export const Analytics: React.FC = () => {
       try {
         setLoading(true);
         const [summaryResponse, categoryResponse, monthlyResponse] = await Promise.all([
-          api.get<AnalyticsSummary>('/analytics/summary'),
-          api.get<CategoryBreakdown[]>('/analytics/categories'),
-          api.get<MonthlyAnalytics[]>('/analytics/monthly'),
+          getAnalyticsSummary(),
+          getAnalyticsCategories(),
+          getAnalyticsMonthly(),
         ]);
         setSummary(summaryResponse.data);
         setCategoryData(categoryResponse.data.map((item, index) => ({ ...item, color: palette[index % palette.length] })));
         setMonthlyData(monthlyResponse.data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch analytics');
+        setError(getApiErrorMessage(err, 'Failed to fetch analytics'));
       } finally {
         setLoading(false);
       }

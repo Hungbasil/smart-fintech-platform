@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowUpRight, CircleDollarSign, ReceiptText, WalletCards } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card as UiCard, CardHeader, CardBody } from '../components';
-import api from '../services/api';
+import api, { getAnalyticsMonthly, getAnalyticsSummary } from '../services/api';
 import auth from '../services/auth';
 import { currency } from '../services/format';
 
@@ -20,7 +20,6 @@ interface Transaction {
   description: string;
   transactionDate: string;
   walletId: string;
-  categoryId: string;
 }
 
 interface DashboardData {
@@ -34,15 +33,10 @@ interface TransactionPage {
   totalElements: number;
 }
 
-interface Category {
-  id: string;
-  type: string;
-}
-
 export const Dashboard: React.FC = () => {
   const [data, setData] = useState<DashboardData | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [monthlyData, setMonthlyData] = useState<{ month: string; income: number; expense: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,28 +47,27 @@ export const Dashboard: React.FC = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [walletsResponse, transactionsResponse, categoriesResponse] = await Promise.all([
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+      const [walletsResponse, transactionsResponse, summaryResponse, monthlyResponse] = await Promise.all([
         api.get<Wallet[]>('/wallets'),
         api.get<TransactionPage | Transaction[]>('/transactions', { params: { size: 50 } }),
-        api.get<Category[]>('/categories'),
+        getAnalyticsSummary({ fromDate: monthStart, toDate: nextMonthStart }),
+        getAnalyticsMonthly(),
       ]);
 
       const wallets = walletsResponse.data;
       const transactionData = transactionsResponse.data;
       const loadedTransactions = Array.isArray(transactionData) ? transactionData : transactionData.content;
-      const now = new Date();
-      const currentMonthTransactions = loadedTransactions.filter((transaction) => {
-        const date = new Date(transaction.transactionDate);
-        return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-      });
       const totalBalance = wallets.reduce((sum, wallet) => sum + wallet.balance, 0);
 
       setTransactions(loadedTransactions);
-      setCategories(categoriesResponse.data);
+      setMonthlyData(monthlyResponse.data);
       setData({
         totalBalance,
-        monthlyTransactions: currentMonthTransactions.length,
-        monthlyVolume: currentMonthTransactions.reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0),
+        monthlyTransactions: summaryResponse.data.transactionCount,
+        monthlyVolume: summaryResponse.data.income + summaryResponse.data.expense,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch dashboard data');
@@ -83,21 +76,7 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  const chartData = Array.from({ length: 6 }, (_, index) => {
-    const date = new Date();
-    date.setMonth(date.getMonth() - (5 - index), 1);
-    const monthTransactions = transactions.filter((transaction) => {
-      const transactionDate = new Date(transaction.transactionDate);
-      return transactionDate.getMonth() === date.getMonth() && transactionDate.getFullYear() === date.getFullYear();
-    });
-    const income = monthTransactions.filter((transaction) => categories.find((category) => category.id === transaction.categoryId)?.type.toUpperCase() === 'INCOME').reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
-    const expenses = monthTransactions.filter((transaction) => categories.find((category) => category.id === transaction.categoryId)?.type.toUpperCase() === 'EXPENSE').reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
-    return {
-      month: date.toLocaleDateString('vi-VN', { month: 'short' }),
-      income,
-      expenses,
-    };
-  });
+  const chartData = monthlyData.map((item) => ({ ...item, expenses: item.expense }));
 
   if (loading) return <div className="p-8">Loading...</div>;
   if (error) return <div className="p-8 text-red-600">Error: {error}</div>;
@@ -129,7 +108,7 @@ export const Dashboard: React.FC = () => {
         </UiCard>
         <UiCard>
           <CardHeader><div><h3 className="section-title">Recent transactions</h3><p className="section-caption mt-1">Your latest financial activity</p></div></CardHeader>
-          <CardBody><div className="divide-y divide-[#edf2f0]">{transactions.slice(0, 5).map((transaction) => { const isIncome = categories.find((category) => category.id === transaction.categoryId)?.type.toUpperCase() === 'INCOME'; return <div key={transaction.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"><div className="min-w-0"><p className="truncate text-[13px] font-bold text-[#17212b]">{transaction.description || 'Untitled transaction'}</p><p className="mt-0.5 text-[11px] text-[#9aa7af]">{new Date(transaction.transactionDate).toLocaleDateString()}</p></div><span className={`shrink-0 text-[13px] font-extrabold ${isIncome ? 'text-[#087f74]' : 'text-[#d76756]'}`}>{isIncome ? '+' : '-'}{currency.format(Math.abs(transaction.amount))}</span></div>; })}{transactions.length === 0 && <div className="py-10 text-center text-sm text-[#9aa7af]">No transactions yet.</div>}</div></CardBody>
+          <CardBody><div className="divide-y divide-[#edf2f0]">{transactions.slice(0, 5).map((transaction) => <div key={transaction.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"><div className="min-w-0"><p className="truncate text-[13px] font-bold text-[#17212b]">{transaction.description || 'Untitled transaction'}</p><p className="mt-0.5 text-[11px] text-[#9aa7af]">{new Date(transaction.transactionDate).toLocaleDateString()}</p></div><span className="shrink-0 text-[13px] font-extrabold text-[#71808c]">{currency.format(Math.abs(transaction.amount))}</span></div>)}{transactions.length === 0 && <div className="py-10 text-center text-sm text-[#9aa7af]">No transactions yet.</div>}</div></CardBody>
         </UiCard>
       </div>
     </div>
