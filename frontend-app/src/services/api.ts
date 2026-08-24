@@ -11,6 +11,28 @@ const api: AxiosInstance = axios.create({
   },
 });
 
+export interface TransferRequest {
+  fromWalletId: string;
+  toWalletId: string;
+  amount: number;
+  description: string;
+  transactionDate: string;
+}
+
+export const transferFunds = (request: TransferRequest) =>
+  api.post('/transactions/transfer', request);
+
+export interface BudgetRequest {
+  categoryId: string;
+  amount: number;
+  month?: number;
+  year?: number;
+}
+
+export const getBudgets = () => api.get('/budgets');
+export const saveBudget = (request: BudgetRequest) => api.post('/budgets', request);
+export const deleteBudget = (id: string) => api.delete(`/budgets/${id}`);
+
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('authToken');

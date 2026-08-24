@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, FileUp, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
+import { ArrowLeftRight, Download, FileUp, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import { Table, TableHead, TableBody, TableRow, TableCell, TableHeaderCell, Card, CardHeader, CardBody } from '../components';
 import api from '../services/api';
+import { transferFunds } from '../services/api';
 import { formatSignedAmount } from '../services/format';
 import { getApiErrorMessage, toast } from '../services/notifications';
 
@@ -12,7 +13,7 @@ interface Transaction {
   transactionDate: string;
   walletId: string;
   categoryId: string;
-  type: 'INCOME' | 'EXPENSE';
+  type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
 }
 
 interface TransactionPage {
@@ -44,6 +45,7 @@ export const Transactions: React.FC = () => {
   const [wallets, setWallets] = useState<WalletOption[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isTransferOpen, setIsTransferOpen] = useState(false);
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -51,6 +53,7 @@ export const Transactions: React.FC = () => {
   const [reloadToken, setReloadToken] = useState(0);
   const [filters, setFilters] = useState({ type: '', walletId: '', categoryId: '' });
   const [form, setForm] = useState({ description: '', amount: '', transactionDate: new Date().toISOString().slice(0, 16), walletId: '', categoryId: '' });
+  const [transferForm, setTransferForm] = useState({ fromWalletId: '', toWalletId: '', amount: '', description: '', transactionDate: new Date().toISOString().slice(0, 16) });
   const importInputRef = useRef<HTMLInputElement>(null);
   const pageSize = 10;
 
@@ -133,6 +136,44 @@ export const Transactions: React.FC = () => {
     setIsCreateOpen(true);
   };
 
+  const openTransferModal = () => {
+    setFormError(null);
+    setTransferForm({ fromWalletId: '', toWalletId: '', amount: '', description: '', transactionDate: new Date().toISOString().slice(0, 16) });
+    setIsTransferOpen(true);
+  };
+
+  const createTransfer = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setFormError(null);
+    const amount = Number(transferForm.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setFormError('Amount must be greater than zero');
+      toast.error('Amount must be greater than zero');
+      return;
+    }
+    if (!transferForm.fromWalletId || !transferForm.toWalletId || transferForm.fromWalletId === transferForm.toWalletId) {
+      setFormError('Please select two different wallets');
+      toast.error('Please select two different wallets');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await transferFunds({ ...transferForm, amount });
+      const walletResponse = await api.get<WalletOption[]>('/wallets');
+      setWallets(walletResponse.data);
+      setReloadToken((value) => value + 1);
+      setIsTransferOpen(false);
+      toast.success('Transfer completed successfully');
+    } catch (err: any) {
+      const message = getApiErrorMessage(err, 'Unable to transfer funds');
+      setFormError(message);
+      toast.error(message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const openEditModal = (transaction: Transaction) => {
     setEditingTransactionId(transaction.id);
     setFormError(null);
@@ -192,7 +233,7 @@ export const Transactions: React.FC = () => {
 
   return (
     <div>
-      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="eyebrow">Money movement</div><h1 className="page-title">Transactions</h1><p className="page-subtitle">Review and understand every movement across your wallets.</p></div><div className="flex flex-wrap gap-2"><button onClick={exportTransactions} className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#e3ebe8] bg-white px-4 py-2.5 text-sm font-bold text-[#71808c] hover:bg-[#f4f7f6]"><Download size={17} />Export CSV</button><button onClick={() => importInputRef.current?.click()} className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#e3ebe8] bg-white px-4 py-2.5 text-sm font-bold text-[#71808c] hover:bg-[#f4f7f6]"><FileUp size={17} />Import CSV</button><input ref={importInputRef} type="file" accept=".csv,text/csv" onChange={importTransactions} className="hidden" /><button onClick={openCreateModal} className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#087f74] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#075c57]"><Plus size={17} />Add transaction</button></div></div>
+      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="eyebrow">Money movement</div><h1 className="page-title">Transactions</h1><p className="page-subtitle">Review and understand every movement across your wallets.</p></div><div className="flex flex-wrap gap-2"><button onClick={exportTransactions} className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#e3ebe8] bg-white px-4 py-2.5 text-sm font-bold text-[#71808c] hover:bg-[#f4f7f6]"><Download size={17} />Export CSV</button><button onClick={() => importInputRef.current?.click()} className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#e3ebe8] bg-white px-4 py-2.5 text-sm font-bold text-[#71808c] hover:bg-[#f4f7f6]"><FileUp size={17} />Import CSV</button><input ref={importInputRef} type="file" accept=".csv,text/csv" onChange={importTransactions} className="hidden" /><button onClick={openTransferModal} className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#087f74] bg-[#e4f4f0] px-4 py-2.5 text-sm font-bold text-[#075c57] shadow-sm transition hover:bg-[#dcefeb]"><ArrowLeftRight size={17} />Transfer</button><button onClick={openCreateModal} className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#087f74] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#075c57]"><Plus size={17} />Add transaction</button></div></div>
 
       <Card>
         <CardHeader><div className="flex items-center justify-between"><div><h3 className="section-title">All transactions</h3><p className="section-caption mt-1">{totalElements} records in your workspace</p></div><span className="hidden items-center gap-2 rounded-lg border border-[#e3ebe8] px-3 py-2 text-xs font-bold text-[#71808c] sm:flex"><SlidersHorizontal size={14} />Filters below</span></div></CardHeader>
@@ -214,7 +255,7 @@ export const Transactions: React.FC = () => {
                     <TableRow key={transaction.id}>
                       <TableCell><span className="font-semibold text-[#17212b]">{new Date(transaction.transactionDate).toLocaleDateString()}</span><span className="block text-[11px] text-[#9aa7af]">{new Date(transaction.transactionDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></TableCell>
                       <TableCell><span className="font-bold text-[#17212b]">{transaction.description || 'Untitled transaction'}</span></TableCell>
-                      <TableCell className={`text-right font-extrabold ${transaction.type === 'INCOME' ? 'text-[#087f74]' : 'text-[#d76756]'}`}>
+                      <TableCell className={`text-right font-extrabold ${transaction.type === 'INCOME' ? 'text-[#087f74]' : transaction.type === 'EXPENSE' ? 'text-[#d76756]' : 'text-[#bd7a22]'}`}>
                         {formatSignedAmount(transaction.amount, transaction.type)}
                       </TableCell>
                       <TableCell><span className="rounded-lg bg-[#edf4f2] px-2 py-1 text-[11px] font-bold text-[#075c57]">{wallets.find((wallet) => wallet.id === transaction.walletId)?.name || transaction.walletId.slice(0, 8)}</span></TableCell>
@@ -231,6 +272,7 @@ export const Transactions: React.FC = () => {
           </CardBody>
       </Card>
       {isCreateOpen && <div className="fixed inset-0 z-40 flex items-end justify-center bg-[#17212b]/35 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"><div role="dialog" aria-modal="true" aria-labelledby="create-transaction-title" className="w-full max-w-[520px] rounded-t-2xl bg-white p-6 shadow-2xl sm:rounded-2xl"><div className="mb-6 flex items-start justify-between"><div><div className="eyebrow">{editingTransactionId ? 'Update record' : 'New record'}</div><h2 id="create-transaction-title" className="mt-1 text-xl font-extrabold tracking-[-.04em] text-[#17212b]">{editingTransactionId ? 'Edit transaction' : 'Add transaction'}</h2><p className="mt-1 text-xs text-[#71808c]">Amounts are positive. Category type determines income or expense.</p></div><button aria-label="Close" onClick={() => { setIsCreateOpen(false); setEditingTransactionId(null); }} className="rounded-lg p-2 text-[#9aa7af] transition hover:bg-[#f4f7f6] hover:text-[#17212b]"><X size={18} /></button></div><form onSubmit={createTransaction} className="space-y-4">{formError && <div className="rounded-xl bg-[#fff1ef] px-3 py-2.5 text-sm font-semibold text-[#c25344]">{formError}</div>}<div><label className="mb-1.5 block text-xs font-bold text-[#71808c]">Description</label><input required value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="e.g. Monthly salary" className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74] focus:ring-2 focus:ring-[#e4f4f0]" /></div><div className="grid grid-cols-1 gap-4 sm:grid-cols-2"><div><label className="mb-1.5 block text-xs font-bold text-[#71808c]">Amount</label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#9aa7af]">$</span><input required min="0.01" step="0.01" type="number" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] py-2.5 pl-7 pr-3 text-sm outline-none focus:border-[#087f74] focus:ring-2 focus:ring-[#e4f4f0]" /></div></div><div><label className="mb-1.5 block text-xs font-bold text-[#71808c]">Date and time</label><input required type="datetime-local" value={form.transactionDate} onChange={(event) => setForm({ ...form, transactionDate: event.target.value })} className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74] focus:ring-2 focus:ring-[#e4f4f0]" /></div></div><div className="grid grid-cols-1 gap-4 sm:grid-cols-2"><div><label className="mb-1.5 block text-xs font-bold text-[#71808c]">Wallet</label><select required value={form.walletId} onChange={(event) => setForm({ ...form, walletId: event.target.value })} className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74]"><option value="">Select wallet</option>{wallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}</select></div><div><label className="mb-1.5 block text-xs font-bold text-[#71808c]">Category</label><select required value={form.categoryId} onChange={(event) => setForm({ ...form, categoryId: event.target.value })} className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74]"><option value="">Select category</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name} ({category.type.toLowerCase()})</option>)}</select></div></div><div className="mt-6 flex justify-end gap-3 border-t border-[#edf2f0] pt-5"><button type="button" onClick={() => { setIsCreateOpen(false); setEditingTransactionId(null); }} className="rounded-xl border border-[#e3ebe8] px-4 py-2.5 text-sm font-bold text-[#71808c] hover:bg-[#f4f7f6]">Cancel</button><button type="submit" disabled={isSaving || !wallets.length || !categories.length} className="rounded-xl bg-[#087f74] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#075c57] disabled:cursor-not-allowed disabled:opacity-50">{isSaving ? 'Saving...' : editingTransactionId ? 'Update transaction' : 'Save transaction'}</button></div></form></div></div>}
+      {isTransferOpen && <div className="fixed inset-0 z-40 flex items-end justify-center bg-[#17212b]/35 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"><div role="dialog" aria-modal="true" aria-labelledby="transfer-title" className="w-full max-w-[520px] rounded-t-2xl bg-white p-6 shadow-2xl sm:rounded-2xl"><div className="mb-6 flex items-start justify-between"><div><div className="eyebrow">Move money</div><h2 id="transfer-title" className="mt-1 text-xl font-extrabold tracking-[-.04em] text-[#17212b]">Transfer between wallets</h2><p className="mt-1 text-xs text-[#71808c]">Move funds without changing your income or expense totals.</p></div><button aria-label="Close transfer modal" onClick={() => setIsTransferOpen(false)} className="rounded-lg p-2 text-[#9aa7af] transition hover:bg-[#f4f7f6] hover:text-[#17212b]"><X size={18} /></button></div><form onSubmit={createTransfer} className="space-y-4">{formError && <div className="rounded-xl bg-[#fff1ef] px-3 py-2.5 text-sm font-semibold text-[#c25344]">{formError}</div>}<div className="grid grid-cols-1 gap-4 sm:grid-cols-2"><div><label className="mb-1.5 block text-xs font-bold text-[#71808c]">From wallet</label><select required value={transferForm.fromWalletId} onChange={(event) => setTransferForm({ ...transferForm, fromWalletId: event.target.value, toWalletId: event.target.value === transferForm.toWalletId ? '' : transferForm.toWalletId })} className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74]"><option value="">Select source</option>{wallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name} ({wallet.balance.toLocaleString('vi-VN')} VND)</option>)}</select></div><div><label className="mb-1.5 block text-xs font-bold text-[#71808c]">To wallet</label><select required value={transferForm.toWalletId} onChange={(event) => setTransferForm({ ...transferForm, toWalletId: event.target.value })} className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74]"><option value="">Select destination</option>{wallets.map((wallet) => <option key={wallet.id} value={wallet.id} disabled={wallet.id === transferForm.fromWalletId}>{wallet.name} ({wallet.balance.toLocaleString('vi-VN')} VND)</option>)}</select></div></div><div><label className="mb-1.5 block text-xs font-bold text-[#71808c]">Amount</label><input required min="0.01" step="0.01" type="number" value={transferForm.amount} onChange={(event) => setTransferForm({ ...transferForm, amount: event.target.value })} className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74] focus:ring-2 focus:ring-[#e4f4f0]" /></div><div><label className="mb-1.5 block text-xs font-bold text-[#71808c]">Description</label><input required value={transferForm.description} onChange={(event) => setTransferForm({ ...transferForm, description: event.target.value })} placeholder="e.g. Move savings" className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74] focus:ring-2 focus:ring-[#e4f4f0]" /></div><div><label className="mb-1.5 block text-xs font-bold text-[#71808c]">Date and time</label><input required type="datetime-local" value={transferForm.transactionDate} onChange={(event) => setTransferForm({ ...transferForm, transactionDate: event.target.value })} className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74] focus:ring-2 focus:ring-[#e4f4f0]" /></div><div className="mt-6 flex justify-end gap-3 border-t border-[#edf2f0] pt-5"><button type="button" onClick={() => setIsTransferOpen(false)} className="rounded-xl border border-[#e3ebe8] px-4 py-2.5 text-sm font-bold text-[#71808c] hover:bg-[#f4f7f6]">Cancel</button><button type="submit" disabled={isSaving || wallets.length < 2} className="rounded-xl bg-[#087f74] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#075c57] disabled:cursor-not-allowed disabled:opacity-50">{isSaving ? 'Transferring...' : 'Transfer funds'}</button></div></form></div></div>}
     </div>
   );
 };

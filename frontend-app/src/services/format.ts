@@ -1,4 +1,4 @@
-export type TransactionType = 'INCOME' | 'EXPENSE';
+export type TransactionType = 'INCOME' | 'EXPENSE' | 'TRANSFER';
 
 export const currency = new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -7,6 +7,7 @@ export const currency = new Intl.NumberFormat('vi-VN', {
 });
 
 export function formatSignedAmount(amount: number, type: string): string {
-  const sign = type.toUpperCase() === 'INCOME' ? '+' : '-';
+  const normalizedType = type.toUpperCase();
+  const sign = normalizedType === 'INCOME' ? '+' : normalizedType === 'EXPENSE' ? '-' : '';
   return `${sign}${currency.format(Math.abs(amount))}`;
 }
