@@ -42,8 +42,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
                                                                                                 WHERE t.transaction_type <> 'TRANSFER'
                                                                                                         AND (:userId IS NULL OR w.user_id = :userId)
                                                                                                         AND (:walletId IS NULL OR t.wallet_id = :walletId)
-                                                                                                        AND (:fromDate IS NULL OR t.transaction_date >= :fromDate)
-                                                                                                        AND (:toDate IS NULL OR t.transaction_date < :toDate)
+                                                                                                        AND (CAST(:fromDate AS timestamp) IS NULL OR t.transaction_date >= CAST(:fromDate AS timestamp))
+                                                                                                        AND (CAST(:toDate AS timestamp) IS NULL OR t.transaction_date < CAST(:toDate AS timestamp))
                         """, nativeQuery = true)
                                 AnalyticsSummaryProjection getAnalyticsSummary(@Param("userId") UUID userId,
                                                                                                                                                                                                                                 @Param("walletId") UUID walletId,
@@ -59,8 +59,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
                                                                                                         AND t.transaction_type <> 'TRANSFER'
                                                                                                         AND (:userId IS NULL OR w.user_id = :userId)
                                                                                                         AND (:walletId IS NULL OR t.wallet_id = :walletId)
-                                                                                                        AND (:fromDate IS NULL OR t.transaction_date >= :fromDate)
-                                                                                                        AND (:toDate IS NULL OR t.transaction_date < :toDate)
+                                                                                                        AND (CAST(:fromDate AS timestamp) IS NULL OR t.transaction_date >= CAST(:fromDate AS timestamp))
+                                                                                                        AND (CAST(:toDate AS timestamp) IS NULL OR t.transaction_date < CAST(:toDate AS timestamp))
                         GROUP BY c.name
                         HAVING SUM(t.amount) > 0
                         ORDER BY SUM(t.amount) DESC
