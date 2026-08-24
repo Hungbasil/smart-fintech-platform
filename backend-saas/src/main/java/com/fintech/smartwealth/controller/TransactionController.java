@@ -30,11 +30,11 @@ public class TransactionController {
             @RequestParam(required = false) UUID walletId,
             @RequestParam(required = false) UUID categoryId,
             @RequestParam(required = false) String type,
-            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String keyword,
             @RequestParam(required = false) LocalDateTime fromDate,
             @RequestParam(required = false) LocalDateTime toDate,
             @PageableDefault(size = 20, sort = "transactionDate", direction = Sort.Direction.DESC) Pageable pageable) {
-        return transactionService.findAll(walletId, categoryId, type, search, fromDate, toDate, pageable);
+        return transactionService.findAll(walletId, categoryId, type, keyword, fromDate, toDate, pageable);
     }
 
     @GetMapping("/{id}")

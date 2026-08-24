@@ -93,12 +93,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
         @Query("""
                         SELECT t
                         FROM Transaction t
-                                                                                                WHERE t.wallet.user.id = :userId
-                                                                                                        AND (:search = '' OR LOWER(t.description) LIKE LOWER(CONCAT('%', :search, '%'))
-                                                                                                                         OR LOWER(t.category.name) LIKE LOWER(CONCAT('%', :search, '%'))
-                                                                                                                         OR LOWER(t.wallet.name) LIKE LOWER(CONCAT('%', :search, '%')))
+                        WHERE t.wallet.user.id = :userId
+                          AND (:keyword = '' OR LOWER(t.description) LIKE LOWER(CONCAT('%', :keyword, '%')))
                         """)
-                                Page<Transaction> findAllByWalletUserId(@Param("userId") UUID userId, @Param("search") String search, Pageable pageable);
+                                Page<Transaction> findAllByWalletUserId(@Param("userId") UUID userId, @Param("keyword") String keyword, Pageable pageable);
 
     @Query("""
             SELECT COALESCE(SUM(t.amount), 0)
@@ -132,16 +130,14 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
               AND (:type = '' OR UPPER(t.category.type) = UPPER(:type))
               AND (:fromDate IS NULL OR t.transactionDate >= :fromDate)
                     AND (:toDate IS NULL OR t.transactionDate <= :toDate)
-                    AND (:search = '' OR LOWER(t.description) LIKE LOWER(CONCAT('%', :search, '%'))
-                            OR LOWER(t.category.name) LIKE LOWER(CONCAT('%', :search, '%'))
-                            OR LOWER(t.wallet.name) LIKE LOWER(CONCAT('%', :search, '%')))
+                    AND (:keyword = '' OR LOWER(t.description) LIKE LOWER(CONCAT('%', :keyword, '%')))
             """)
     Page<Transaction> findAllByFilters(@Param("walletId") UUID walletId,
                                        @Param("categoryId") UUID categoryId,
                                        @Param("type") String type,
                                        @Param("fromDate") LocalDateTime fromDate,
                                        @Param("toDate") LocalDateTime toDate,
-                                       @Param("search") String search,
+                                       @Param("keyword") String keyword,
                                        Pageable pageable);
 
       @Query("""
@@ -152,16 +148,14 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
                 AND (:categoryId IS NULL OR t.category.id = :categoryId)
                 AND (:fromDate IS NULL OR t.transactionDate >= :fromDate)
                 AND (:toDate IS NULL OR t.transactionDate <= :toDate)
-                         AND (:search = '' OR LOWER(t.description) LIKE LOWER(CONCAT('%', :search, '%'))
-                                 OR LOWER(t.category.name) LIKE LOWER(CONCAT('%', :search, '%'))
-                                 OR LOWER(t.wallet.name) LIKE LOWER(CONCAT('%', :search, '%')))
+                         AND (:keyword = '' OR LOWER(t.description) LIKE LOWER(CONCAT('%', :keyword, '%')))
               """)
       Page<Transaction> findAllByWalletUserIdWithoutTypeFilter(@Param("userId") UUID userId,
                                                                 @Param("walletId") UUID walletId,
                                                                 @Param("categoryId") UUID categoryId,
                                                                 @Param("fromDate") LocalDateTime fromDate,
                                                                 @Param("toDate") LocalDateTime toDate,
-                                                                @Param("search") String search,
+                                                                @Param("keyword") String keyword,
                                                                 Pageable pageable);
 
     @Query("""
@@ -173,9 +167,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
               AND (:type = '' OR UPPER(t.category.type) = UPPER(:type))
               AND (:fromDate IS NULL OR t.transactionDate >= :fromDate)
               AND (:toDate IS NULL OR t.transactionDate <= :toDate)
-                    AND (:search = '' OR LOWER(t.description) LIKE LOWER(CONCAT('%', :search, '%'))
-                            OR LOWER(t.category.name) LIKE LOWER(CONCAT('%', :search, '%'))
-                            OR LOWER(t.wallet.name) LIKE LOWER(CONCAT('%', :search, '%')))
+                    AND (:keyword = '' OR LOWER(t.description) LIKE LOWER(CONCAT('%', :keyword, '%')))
             """)
     Page<Transaction> findAllByWalletUserIdAndFilters(@Param("userId") UUID userId,
                                                       @Param("walletId") UUID walletId,
@@ -183,7 +175,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
                                                       @Param("type") String type,
                                                       @Param("fromDate") LocalDateTime fromDate,
                                                       @Param("toDate") LocalDateTime toDate,
-                                                      @Param("search") String search,
+                                                      @Param("keyword") String keyword,
                                                       Pageable pageable);
 
     Optional<Transaction> findByIdAndWalletUserId(UUID id, UUID userId);

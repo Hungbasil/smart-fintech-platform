@@ -35,25 +35,25 @@ public class TransactionService {
     public Page<TransactionResponse> findAll(UUID walletId,
                                              UUID categoryId,
                                              String type,
-                                             String search,
+                                             String keyword,
                                              LocalDateTime fromDate,
                                              LocalDateTime toDate,
                                              Pageable pageable) {
         String normalizedType = type == null ? "" : type;
-        String normalizedSearch = search == null ? "" : search.trim();
+        String normalizedKeyword = keyword == null ? "" : keyword.trim();
         if (securityUtils.isAdmin()) {
-            return transactionRepository.findAllByFilters(walletId, categoryId, normalizedType, fromDate, toDate, normalizedSearch, pageable)
+            return transactionRepository.findAllByFilters(walletId, categoryId, normalizedType, fromDate, toDate, normalizedKeyword, pageable)
                     .map(this::toResponse);
         }
-        if (normalizedType.isEmpty() && normalizedSearch.isEmpty() && walletId == null && categoryId == null && fromDate == null && toDate == null) {
-            return transactionRepository.findAllByWalletUserId(securityUtils.getCurrentUserId(), normalizedSearch, pageable)
+        if (normalizedType.isEmpty() && normalizedKeyword.isEmpty() && walletId == null && categoryId == null && fromDate == null && toDate == null) {
+            return transactionRepository.findAllByWalletUserId(securityUtils.getCurrentUserId(), normalizedKeyword, pageable)
                 .map(this::toResponse);
         }
         if (normalizedType.isEmpty()) {
-            return transactionRepository.findAllByWalletUserIdWithoutTypeFilter(securityUtils.getCurrentUserId(), walletId, categoryId, fromDate, toDate, normalizedSearch, pageable)
+            return transactionRepository.findAllByWalletUserIdWithoutTypeFilter(securityUtils.getCurrentUserId(), walletId, categoryId, fromDate, toDate, normalizedKeyword, pageable)
                 .map(this::toResponse);
         }
-        return transactionRepository.findAllByWalletUserIdAndFilters(securityUtils.getCurrentUserId(), walletId, categoryId, normalizedType, fromDate, toDate, normalizedSearch, pageable)
+        return transactionRepository.findAllByWalletUserIdAndFilters(securityUtils.getCurrentUserId(), walletId, categoryId, normalizedType, fromDate, toDate, normalizedKeyword, pageable)
                 .map(this::toResponse);
     }
 
