@@ -11,6 +11,7 @@ const navigation = [
   { label: 'Categories', to: '/categories', icon: Tag },
   { label: 'Budgets', to: '/budgets', icon: Target },
   { label: 'Recurring', to: '/recurring', icon: CalendarClock },
+  { label: 'Saving goals', to: '/saving-goals', icon: Target },
 ];
 
 export const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {

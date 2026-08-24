@@ -33,6 +33,30 @@ export const getBudgets = () => api.get('/budgets');
 export const saveBudget = (request: BudgetRequest) => api.post('/budgets', request);
 export const deleteBudget = (id: string) => api.delete(`/budgets/${id}`);
 
+export interface SavingGoalRequest {
+  name: string;
+  targetAmount: number;
+  deadline?: string;
+}
+
+export interface AddSavingGoalFundsRequest {
+  amount: number;
+}
+
+export interface SavingGoal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  deadline: string | null;
+}
+
+export const getSavingGoals = () => api.get<SavingGoal[]>('/saving-goals');
+export const createSavingGoal = (request: SavingGoalRequest) => api.post<SavingGoal>('/saving-goals', request);
+export const updateSavingGoal = (id: string, request: SavingGoalRequest) => api.put<SavingGoal>(`/saving-goals/${id}`, request);
+export const deleteSavingGoal = (id: string) => api.delete(`/saving-goals/${id}`);
+export const addSavingGoalFunds = (id: string, request: AddSavingGoalFundsRequest) => api.post<SavingGoal>(`/saving-goals/${id}/add-funds`, request);
+
 export interface AnalyticsQuery {
   walletId?: string;
   fromDate?: string;
