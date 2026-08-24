@@ -48,8 +48,12 @@ export const Dashboard: React.FC = () => {
     try {
       setLoading(true);
       const now = new Date();
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+      const toLocalDateTime = (date: Date) => {
+        const pad = (value: number) => String(value).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+      };
+      const monthStart = toLocalDateTime(new Date(now.getFullYear(), now.getMonth(), 1));
+      const nextMonthStart = toLocalDateTime(new Date(now.getFullYear(), now.getMonth() + 1, 1));
       const [walletsResponse, transactionsResponse, summaryResponse, monthlyResponse] = await Promise.all([
         api.get<Wallet[]>('/wallets'),
         api.get<TransactionPage | Transaction[]>('/transactions', { params: { size: 50 } }),

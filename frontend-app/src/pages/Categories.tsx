@@ -8,6 +8,7 @@ interface Category {
   id: string;
   name: string;
   type: 'INCOME' | 'EXPENSE' | string;
+  userId?: string | null;
 }
 
 export const Categories: React.FC = () => {
@@ -109,7 +110,7 @@ export const Categories: React.FC = () => {
         {[{ title: 'Income', items: incomeCategories, color: 'text-[#087f74]', iconBg: 'bg-[#e4f4f0]' }, { title: 'Expenses', items: expenseCategories, color: 'text-[#d76756]', iconBg: 'bg-[#fff1ef]' }].map(({ title, items, color, iconBg }) => (
           <Card key={title}>
             <CardHeader><h2 className="section-title">{title}</h2><p className="section-caption mt-1">Used when recording {title.toLowerCase()}.</p></CardHeader>
-            <CardBody>{items.length === 0 ? <div className="py-8 text-center"><Tag size={22} className="mx-auto text-[#b7c3bf]" /><p className="mt-2 text-sm font-bold text-[#71808c]">No {title.toLowerCase()} categories</p></div> : <div className="space-y-2">{items.map((category) => <div key={category.id} className="flex items-center justify-between rounded-xl border border-[#edf2f0] px-3 py-3"><div className="flex items-center gap-3"><span className={`flex h-9 w-9 items-center justify-center rounded-lg ${iconBg} ${color}`}><Tag size={16} /></span><span className="text-sm font-bold text-[#17212b]">{category.name}</span></div><div className="flex gap-1"><button aria-label={`Edit ${category.name}`} title="Edit category" onClick={() => openEdit(category)} className="rounded-lg p-2 text-[#9aa7af] hover:bg-[#e4f4f0] hover:text-[#087f74]"><Pencil size={15} /></button><button aria-label={`Delete ${category.name}`} title="Delete category" onClick={() => deleteCategory(category.id)} className="rounded-lg p-2 text-[#9aa7af] hover:bg-[#fff1ef] hover:text-[#d76756]"><Trash2 size={15} /></button></div></div>)}</div>}</CardBody>
+            <CardBody>{items.length === 0 ? <div className="py-8 text-center"><Tag size={22} className="mx-auto text-[#b7c3bf]" /><p className="mt-2 text-sm font-bold text-[#71808c]">No {title.toLowerCase()} categories</p></div> : <div className="space-y-2">{items.map((category) => <div key={category.id} className="flex items-center justify-between rounded-xl border border-[#edf2f0] px-3 py-3"><div className="flex items-center gap-3"><span className={`flex h-9 w-9 items-center justify-center rounded-lg ${iconBg} ${color}`}><Tag size={16} /></span><div><div className="flex items-center gap-2"><span className="text-sm font-bold text-[#17212b]">{category.name}</span><span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${category.userId ? 'bg-[#e4f4f0] text-[#087f74]' : 'bg-[#f1f3f2] text-[#71808c]'}`}>{category.userId ? 'Cá nhân' : 'Mặc định'}</span></div></div></div>{category.userId && <div className="flex gap-1"><button aria-label={`Edit ${category.name}`} title="Edit category" onClick={() => openEdit(category)} className="rounded-lg p-2 text-[#9aa7af] hover:bg-[#e4f4f0] hover:text-[#087f74]"><Pencil size={15} /></button><button aria-label={`Delete ${category.name}`} title="Delete category" onClick={() => deleteCategory(category.id)} className="rounded-lg p-2 text-[#9aa7af] hover:bg-[#fff1ef] hover:text-[#d76756]"><Trash2 size={15} /></button></div>}</div>)}</div>}</CardBody>
           </Card>
         ))}
       </div>
