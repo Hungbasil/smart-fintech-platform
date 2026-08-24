@@ -21,25 +21,25 @@ public class AnalyticsService {
     private final TransactionRepository transactionRepository;
     private final SecurityUtils securityUtils;
 
-    public AnalyticsSummaryResponse getSummary() {
+    public AnalyticsSummaryResponse getSummary(UUID walletId, LocalDateTime fromDate, LocalDateTime toDate) {
         TransactionRepository.AnalyticsSummaryProjection result = transactionRepository
-                .getAnalyticsSummary(currentUserId());
+                .getAnalyticsSummary(currentUserId(), walletId, fromDate, toDate);
         BigDecimal income = valueOrZero(result.getIncome());
         BigDecimal expense = valueOrZero(result.getExpense());
         return new AnalyticsSummaryResponse(income, expense, income.subtract(expense), result.getTransactionCount());
     }
 
-    public List<AnalyticsCategoryResponse> getExpenseByCategory() {
-        return transactionRepository.getExpenseByCategory(currentUserId()).stream()
+    public List<AnalyticsCategoryResponse> getExpenseByCategory(UUID walletId, LocalDateTime fromDate, LocalDateTime toDate) {
+        return transactionRepository.getExpenseByCategory(currentUserId(), walletId, fromDate, toDate).stream()
                 .map(item -> new AnalyticsCategoryResponse(item.getCategory(), valueOrZero(item.getAmount())))
                 .toList();
     }
 
-    public List<AnalyticsMonthlyResponse> getMonthlyAnalytics() {
+    public List<AnalyticsMonthlyResponse> getMonthlyAnalytics(UUID walletId, LocalDateTime fromDate, LocalDateTime toDate) {
         LocalDate firstMonth = LocalDate.now().withDayOfMonth(1).minusMonths(5);
-        LocalDateTime fromDate = firstMonth.atStartOfDay();
-        LocalDateTime toDate = LocalDate.now().plusDays(1).atStartOfDay();
-        return transactionRepository.getMonthlyAnalytics(currentUserId(), fromDate, toDate).stream()
+        LocalDateTime effectiveFrom = fromDate == null ? firstMonth.atStartOfDay() : fromDate;
+        LocalDateTime effectiveTo = toDate == null ? LocalDate.now().plusDays(1).atStartOfDay() : toDate;
+        return transactionRepository.getMonthlyAnalytics(currentUserId(), walletId, effectiveFrom, effectiveTo).stream()
                 .map(item -> new AnalyticsMonthlyResponse(
                         item.getMonth(),
                         valueOrZero(item.getIncome()),

@@ -41,8 +41,14 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
                         JOIN categories c ON c.id = t.category_id
                                                                                                 WHERE t.transaction_type <> 'TRANSFER'
                                                                                                         AND (:userId IS NULL OR w.user_id = :userId)
+                                                                                                        AND (:walletId IS NULL OR t.wallet_id = :walletId)
+                                                                                                        AND (:fromDate IS NULL OR t.transaction_date >= :fromDate)
+                                                                                                        AND (:toDate IS NULL OR t.transaction_date < :toDate)
                         """, nativeQuery = true)
-        AnalyticsSummaryProjection getAnalyticsSummary(@Param("userId") UUID userId);
+                                AnalyticsSummaryProjection getAnalyticsSummary(@Param("userId") UUID userId,
+                                                                                                                                                                                                                                @Param("walletId") UUID walletId,
+                                                                                                                                                                                                                                @Param("fromDate") LocalDateTime fromDate,
+                                                                                                                                                                                                                                @Param("toDate") LocalDateTime toDate);
 
         @Query(value = """
                         SELECT c.name AS category, COALESCE(SUM(t.amount), 0) AS amount
@@ -51,12 +57,18 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
                         JOIN categories c ON c.id = t.category_id
                                                                                                 WHERE UPPER(c.type) = 'EXPENSE'
                                                                                                         AND t.transaction_type <> 'TRANSFER'
-                          AND (:userId IS NULL OR w.user_id = :userId)
+                                                                                                        AND (:userId IS NULL OR w.user_id = :userId)
+                                                                                                        AND (:walletId IS NULL OR t.wallet_id = :walletId)
+                                                                                                        AND (:fromDate IS NULL OR t.transaction_date >= :fromDate)
+                                                                                                        AND (:toDate IS NULL OR t.transaction_date < :toDate)
                         GROUP BY c.name
                         HAVING SUM(t.amount) > 0
                         ORDER BY SUM(t.amount) DESC
                         """, nativeQuery = true)
-        java.util.List<AnalyticsCategoryProjection> getExpenseByCategory(@Param("userId") UUID userId);
+        java.util.List<AnalyticsCategoryProjection> getExpenseByCategory(@Param("userId") UUID userId,
+                                                                          @Param("walletId") UUID walletId,
+                                                                          @Param("fromDate") LocalDateTime fromDate,
+                                                                          @Param("toDate") LocalDateTime toDate);
 
         @Query(value = """
                         SELECT TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM') AS month,
@@ -68,11 +80,13 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
                                                                                                 WHERE t.transaction_type <> 'TRANSFER'
                                                                                                         AND t.transaction_date >= :fromDate
                           AND t.transaction_date < :toDate
-                          AND (:userId IS NULL OR w.user_id = :userId)
+                                                                                                        AND (:userId IS NULL OR w.user_id = :userId)
+                                                                                                        AND (:walletId IS NULL OR t.wallet_id = :walletId)
                         GROUP BY DATE_TRUNC('month', t.transaction_date)
                         ORDER BY DATE_TRUNC('month', t.transaction_date)
                         """, nativeQuery = true)
         java.util.List<AnalyticsMonthlyProjection> getMonthlyAnalytics(@Param("userId") UUID userId,
+                                                                                                                                        @Param("walletId") UUID walletId,
                                                                                                                                         @Param("fromDate") LocalDateTime fromDate,
                                                                                                                                         @Param("toDate") LocalDateTime toDate);
 
