@@ -18,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,8 +32,14 @@ public class BudgetService {
     private final SecurityUtils securityUtils;
 
     public List<BudgetResponse> findAll() {
+        return getBudgetProgress();
+    }
+
+    public List<BudgetResponse> getBudgetProgress() {
         UUID userId = securityUtils.getCurrentUserId();
-        return budgetRepository.findByUserId(userId).stream().map(this::toResponse).toList();
+        YearMonth currentMonth = YearMonth.now();
+        return budgetRepository.findByUserIdAndMonthAndYear(userId, currentMonth.getMonthValue(), currentMonth.getYear())
+            .stream().map(this::toResponse).toList();
     }
 
     public BudgetResponse save(BudgetRequest request) {
@@ -43,10 +50,16 @@ public class BudgetService {
         if (!"EXPENSE".equalsIgnoreCase(category.getType())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Budgets are only available for expense categories");
         }
-        Budget budget = budgetRepository.findByUserIdAndCategoryId(userId, category.getId()).orElseGet(Budget::new);
+        YearMonth targetMonth = YearMonth.of(
+            request.getYear() == null ? YearMonth.now().getYear() : request.getYear(),
+            request.getMonth() == null ? YearMonth.now().getMonthValue() : request.getMonth());
+        Budget budget = budgetRepository.findByUserIdAndCategoryIdAndMonthAndYear(
+            userId, category.getId(), targetMonth.getMonthValue(), targetMonth.getYear()).orElseGet(Budget::new);
         budget.setUser(user);
         budget.setCategory(category);
-        budget.setMonthlyLimit(request.getMonthlyLimit());
+        budget.setAmount(request.getAmount());
+        budget.setMonth(targetMonth.getMonthValue());
+        budget.setYear(targetMonth.getYear());
         return toResponse(budgetRepository.save(budget));
     }
 
@@ -56,10 +69,10 @@ public class BudgetService {
     }
 
     private BudgetResponse toResponse(Budget budget) {
-        LocalDate from = LocalDate.now().withDayOfMonth(1);
+        LocalDate from = LocalDate.of(budget.getYear(), budget.getMonth(), 1);
         LocalDate to = from.plusMonths(1);
         BigDecimal spent = transactionRepository.sumExpenseByUserAndCategoryBetween(budget.getUser().getId(), budget.getCategory().getId(), from.atStartOfDay(), to.atStartOfDay());
-        BigDecimal percentage = spent.divide(budget.getMonthlyLimit(), 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
-        return new BudgetResponse(budget.getId(), budget.getCategory().getId(), budget.getCategory().getName(), budget.getMonthlyLimit(), spent, percentage);
+        BigDecimal percentage = spent.divide(budget.getAmount(), 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
+        return new BudgetResponse(budget.getId(), budget.getCategory().getId(), budget.getCategory().getName(), budget.getAmount(), spent, percentage, budget.getMonth(), budget.getYear());
     }
 }
