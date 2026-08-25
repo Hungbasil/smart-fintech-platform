@@ -32,6 +32,7 @@ export const scanReceipt = (file: File) => {
   formData.append('file', file);
   return api.post<OcrResult>('/transactions/ocr', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 180000,
   });
 };
 
