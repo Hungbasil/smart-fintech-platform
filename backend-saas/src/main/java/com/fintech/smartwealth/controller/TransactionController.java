@@ -1,10 +1,12 @@
 package com.fintech.smartwealth.controller;
 
 import com.fintech.smartwealth.dto.CreateTransactionRequest;
+import com.fintech.smartwealth.dto.OcrResultDTO;
 import com.fintech.smartwealth.dto.TransactionResponse;
 import com.fintech.smartwealth.dto.TransferRequest;
 import com.fintech.smartwealth.dto.UpdateTransactionRequest;
 import com.fintech.smartwealth.service.TransactionService;
+import com.fintech.smartwealth.service.OcrService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -13,6 +15,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -24,6 +27,7 @@ import java.util.UUID;
 public class TransactionController {
 
     private final TransactionService transactionService;
+    private final OcrService ocrService;
 
     @GetMapping
     public Page<TransactionResponse> findAll(
@@ -57,6 +61,11 @@ public class TransactionController {
     @ResponseStatus(HttpStatus.CREATED)
     public TransactionResponse transfer(@Valid @RequestBody TransferRequest request) {
         return transactionService.transferFunds(request);
+    }
+
+    @PostMapping(value = "/ocr", consumes = "multipart/form-data")
+    public OcrResultDTO ocr(@RequestParam("file") MultipartFile file) {
+        return ocrService.extract(file);
     }
 
     @PutMapping("/{id}")

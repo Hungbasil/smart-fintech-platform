@@ -18,6 +18,10 @@ spring:
     baseline-version: 0
     validate-on-migrate: false
     clean-disabled: true
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
 management:
   endpoints:
     web:
@@ -39,3 +43,6 @@ springdoc:
 jwt:
   secret: ${JWT_SECRET}
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+ollama:
+  url: ${OLLAMA_URL:http://localhost:11434}
+  model: ${OLLAMA_MODEL:gpt-oss:20b}
