@@ -33,7 +33,7 @@ public class OcrService {
     @Value("${ollama.url:http://localhost:11434}")
     private String ollamaUrl;
 
-    @Value("${ollama.model:gpt-oss:20b}")
+    @Value("${OLLAMA_MODEL:llama3.2-vision:11b}")
     private String ollamaModel;
 
     public OcrResultDTO extract(MultipartFile file) {

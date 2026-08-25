@@ -45,4 +45,4 @@ jwt:
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 ollama:
   url: ${OLLAMA_URL:http://localhost:11434}
-  model: ${OLLAMA_MODEL:gpt-oss:20b}
+  model: ${OLLAMA_MODEL:llama3.2-vision:11b}
