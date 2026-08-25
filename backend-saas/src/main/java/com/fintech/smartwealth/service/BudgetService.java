@@ -13,6 +13,7 @@ import com.fintech.smartwealth.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -31,6 +32,7 @@ public class BudgetService {
     private final TransactionRepository transactionRepository;
     private final SecurityUtils securityUtils;
 
+    @Transactional(readOnly = true)
     public List<BudgetResponse> findAll() {
         return getBudgetProgress();
     }
@@ -42,6 +44,7 @@ public class BudgetService {
             .stream().map(this::toResponse).toList();
     }
 
+    @Transactional
     public BudgetResponse save(BudgetRequest request) {
         UUID userId = securityUtils.getCurrentUserId();
         User user = userRepository.findById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
