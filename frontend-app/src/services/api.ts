@@ -22,6 +22,19 @@ export interface TransferRequest {
 export const transferFunds = (request: TransferRequest) =>
   api.post('/transactions/transfer', request);
 
+export interface OcrResult {
+  amount: number;
+  date: string;
+}
+
+export const scanReceipt = (file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return api.post<OcrResult>('/transactions/ocr', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
+
 export interface BudgetRequest {
   categoryId: string;
   amount: number;

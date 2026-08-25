@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeftRight, Download, FileUp, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
+import { ArrowLeftRight, Camera, Download, FileUp, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import { Table, TableHead, TableBody, TableRow, TableCell, TableHeaderCell, Card, CardHeader, CardBody } from '../components';
 import api from '../services/api';
-import { transferFunds } from '../services/api';
+import { scanReceipt, transferFunds } from '../services/api';
 import { formatSignedAmount } from '../services/format';
 import { getApiErrorMessage, toast } from '../services/notifications';
 
@@ -49,6 +49,7 @@ export const Transactions: React.FC = () => {
   const [isTransferOpen, setIsTransferOpen] = useState(false);
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
@@ -56,6 +57,7 @@ export const Transactions: React.FC = () => {
   const [form, setForm] = useState({ description: '', amount: '', transactionDate: new Date().toISOString().slice(0, 16), walletId: '', categoryId: '' });
   const [transferForm, setTransferForm] = useState({ fromWalletId: '', toWalletId: '', amount: '', description: '', transactionDate: new Date().toISOString().slice(0, 16) });
   const importInputRef = useRef<HTMLInputElement>(null);
+  const ocrInputRef = useRef<HTMLInputElement>(null);
   const pageSize = 10;
 
   useEffect(() => {
@@ -143,6 +145,29 @@ export const Transactions: React.FC = () => {
     setFormError(null);
     setForm({ description: '', amount: '', transactionDate: new Date().toISOString().slice(0, 16), walletId: '', categoryId: '' });
     setIsCreateOpen(true);
+  };
+
+  const scanReceiptImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setFormError(null);
+    setIsScanning(true);
+    try {
+      const response = await scanReceipt(file);
+      setForm((current) => ({
+        ...current,
+        amount: String(response.data.amount),
+        transactionDate: `${response.data.date}T12:00`,
+      }));
+      toast.success('Receipt scanned. Please review the values before saving.');
+    } catch (err: any) {
+      const message = getApiErrorMessage(err, 'Unable to scan receipt');
+      setFormError(message);
+      toast.error(message);
+    } finally {
+      setIsScanning(false);
+    }
   };
 
   const openTransferModal = () => {
@@ -242,6 +267,7 @@ export const Transactions: React.FC = () => {
 
   return (
     <div>
+      {isCreateOpen && !editingTransactionId && <div className="fixed left-1/2 top-4 z-50 flex w-[calc(100%-2rem)] max-w-[520px] -translate-x-1/2 items-center justify-between gap-3 rounded-xl border border-[#b9e2d9] bg-[#f3fbf8] px-4 py-3 shadow-xl"><div><p className="text-sm font-bold text-[#17212b]">Receipt assistant</p><p className="text-xs text-[#71808c]">Scan an image to fill amount and date.</p></div><button type="button" disabled={isScanning} onClick={() => ocrInputRef.current?.click()} className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-[#087f74] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#075c57] disabled:cursor-not-allowed disabled:opacity-50"><Camera size={15} />{isScanning ? 'Scanning...' : 'Scan with AI'}</button><input ref={ocrInputRef} type="file" accept="image/*" onChange={scanReceiptImage} className="hidden" /></div>}
       <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="eyebrow">Money movement</div><h1 className="page-title">Transactions</h1><p className="page-subtitle">Review and understand every movement across your wallets.</p></div><div className="flex flex-wrap gap-2"><button onClick={exportTransactions} className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#e3ebe8] bg-white px-4 py-2.5 text-sm font-bold text-[#71808c] hover:bg-[#f4f7f6]"><Download size={17} />Export CSV</button><button onClick={() => importInputRef.current?.click()} className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#e3ebe8] bg-white px-4 py-2.5 text-sm font-bold text-[#71808c] hover:bg-[#f4f7f6]"><FileUp size={17} />Import CSV</button><input ref={importInputRef} type="file" accept=".csv,text/csv" onChange={importTransactions} className="hidden" /><button onClick={openTransferModal} className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#087f74] bg-[#e4f4f0] px-4 py-2.5 text-sm font-bold text-[#075c57] shadow-sm transition hover:bg-[#dcefeb]"><ArrowLeftRight size={17} />Transfer</button><button onClick={openCreateModal} className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#087f74] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#075c57]"><Plus size={17} />Add transaction</button></div></div>
 
       <Card>
