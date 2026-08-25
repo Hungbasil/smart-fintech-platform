@@ -14,6 +14,9 @@ import java.util.UUID;
 
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
 
+        boolean existsByWalletId(UUID walletId);
+        boolean existsByCategoryId(UUID categoryId);
+
         interface AnalyticsSummaryProjection {
                 BigDecimal getIncome();
                 BigDecimal getExpense();

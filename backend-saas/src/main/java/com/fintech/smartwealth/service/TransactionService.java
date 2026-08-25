@@ -32,6 +32,7 @@ public class TransactionService {
     private final CategoryRepository categoryRepository;
     private final SecurityUtils securityUtils;
 
+    @Transactional(readOnly = true)
     public Page<TransactionResponse> findAll(UUID walletId,
                                              UUID categoryId,
                                              String type,
@@ -41,8 +42,10 @@ public class TransactionService {
                                              Pageable pageable) {
         String normalizedType = type == null ? "" : type;
         String normalizedKeyword = keyword == null ? "" : keyword.trim();
+        LocalDateTime normalizedFromDate = fromDate == null ? LocalDateTime.of(1, 1, 1, 0, 0) : fromDate;
+        LocalDateTime normalizedToDate = toDate == null ? LocalDateTime.of(9999, 12, 31, 23, 59, 59) : toDate;
         if (securityUtils.isAdmin()) {
-            return transactionRepository.findAllByFilters(walletId, categoryId, normalizedType, fromDate, toDate, normalizedKeyword, pageable)
+            return transactionRepository.findAllByFilters(walletId, categoryId, normalizedType, normalizedFromDate, normalizedToDate, normalizedKeyword, pageable)
                     .map(this::toResponse);
         }
         if (normalizedType.isEmpty() && normalizedKeyword.isEmpty() && walletId == null && categoryId == null && fromDate == null && toDate == null) {
@@ -50,13 +53,14 @@ public class TransactionService {
                 .map(this::toResponse);
         }
         if (normalizedType.isEmpty()) {
-            return transactionRepository.findAllByWalletUserIdWithoutTypeFilter(securityUtils.getCurrentUserId(), walletId, categoryId, fromDate, toDate, normalizedKeyword, pageable)
+            return transactionRepository.findAllByWalletUserIdWithoutTypeFilter(securityUtils.getCurrentUserId(), walletId, categoryId, normalizedFromDate, normalizedToDate, normalizedKeyword, pageable)
                 .map(this::toResponse);
         }
-        return transactionRepository.findAllByWalletUserIdAndFilters(securityUtils.getCurrentUserId(), walletId, categoryId, normalizedType, fromDate, toDate, normalizedKeyword, pageable)
+        return transactionRepository.findAllByWalletUserIdAndFilters(securityUtils.getCurrentUserId(), walletId, categoryId, normalizedType, normalizedFromDate, normalizedToDate, normalizedKeyword, pageable)
                 .map(this::toResponse);
     }
 
+    @Transactional(readOnly = true)
     public TransactionResponse findById(UUID id) {
         Transaction transaction;
         if (securityUtils.isAdmin()) {
