@@ -82,7 +82,6 @@ export const Categories: React.FC = () => {
       toast.success('Category deleted');
     } catch (err: any) {
       const message = getApiErrorMessage(err, 'Unable to delete category');
-      setError(message);
       toast.error(message);
     }
   };

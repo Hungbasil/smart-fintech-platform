@@ -22,6 +22,15 @@ export interface TransferRequest {
 export const transferFunds = (request: TransferRequest) =>
   api.post('/transactions/transfer', request);
 
+export interface WalletRequest {
+  name: string;
+  balance: number;
+}
+
+export const updateWallet = (id: string, request: WalletRequest) => api.put(`/wallets/${id}`, request);
+
+export const updateRecurringTransaction = (id: string, request: object) => api.put(`/recurring-transactions/${id}`, request);
+
 export interface OcrResult {
   amount: number;
   date: string;
@@ -109,7 +118,8 @@ api.interceptors.request.use(
     const token = localStorage.getItem('authToken');
     const isAuthRequest = config.url?.startsWith('/auth/');
     if (token && !isAuthRequest) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.set('Authorization', `Bearer ${token}`);
+      config.headers.set('X-Auth-Token', `Bearer ${token}`);
     }
     return config;
   },
@@ -120,8 +130,12 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     const isAuthRequest = error.config?.url?.startsWith('/auth/');
-    if (error.response?.status === 401 && !isAuthRequest) {
+    const serverMessage = error.response?.data?.message;
+    const hasInvalidToken = serverMessage === 'Invalid or expired token';
+    const hasStoredToken = Boolean(localStorage.getItem('authToken'));
+    if (error.response?.status === 401 && !isAuthRequest && (hasInvalidToken || !hasStoredToken)) {
       localStorage.removeItem('authToken');
+      localStorage.removeItem('authUser');
       toast.error('Your session has expired. Please sign in again.');
       window.location.href = '/login';
     }

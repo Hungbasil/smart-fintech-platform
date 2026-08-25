@@ -83,7 +83,7 @@ export const Transactions: React.FC = () => {
           setTotalPages(Math.max(1, response.data.totalPages));
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch transactions');
+        setError(getApiErrorMessage(err, 'Failed to fetch transactions'));
       } finally {
         setLoading(false);
       }

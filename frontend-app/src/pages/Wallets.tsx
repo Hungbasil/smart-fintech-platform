@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Trash2, WalletCards } from 'lucide-react';
-import api from '../services/api';
+import { Pencil, Plus, Trash2, WalletCards, X } from 'lucide-react';
+import api, { updateWallet } from '../services/api';
 import { Card, CardBody } from '../components';
 import { currency } from '../services/format';
 import { getApiErrorMessage, toast } from '../services/notifications';
@@ -17,6 +17,8 @@ export const Wallets: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [balance, setBalance] = useState<number>(0);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
     fetchWallets();
@@ -37,16 +39,34 @@ export const Wallets: React.FC = () => {
   const addWallet = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await api.post('/wallets', { name, balance });
-      setWallets((prev) => [res.data, ...prev]);
+      const res = editingId
+        ? await updateWallet(editingId, { name, balance })
+        : await api.post('/wallets', { name, balance });
+      setWallets((prev) => editingId ? prev.map((wallet) => wallet.id === editingId ? res.data : wallet) : [res.data, ...prev]);
       setName('');
       setBalance(0);
-      toast.success('Wallet created successfully');
+      setEditingId(null);
+      setIsEditModalOpen(false);
+      toast.success(editingId ? 'Wallet updated successfully' : 'Wallet created successfully');
     } catch (err) {
       const message = getApiErrorMessage(err, 'Unable to create wallet');
       setError(message);
       toast.error(message);
     }
+  };
+
+  const editWallet = (wallet: Wallet) => {
+    setEditingId(wallet.id);
+    setName(wallet.name);
+    setBalance(wallet.balance);
+    setIsEditModalOpen(true);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setName('');
+    setBalance(0);
+    setIsEditModalOpen(false);
   };
 
   const deleteWallet = async (id: string) => {
@@ -56,7 +76,6 @@ export const Wallets: React.FC = () => {
       toast.success('Wallet deleted');
     } catch (err) {
       const message = getApiErrorMessage(err, 'Unable to delete wallet');
-      setError(message);
       toast.error(message);
     }
   };
@@ -75,8 +94,9 @@ export const Wallets: React.FC = () => {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[330px_1fr]
       "><Card><CardBody><div className="mb-5"><h2 className="section-title">Create wallet</h2><p className="section-caption mt-1">Add an account to your overview.</p></div><form onSubmit={addWallet} className="space-y-4"><div><label className="mb-1.5 block text-xs font-bold text-[#71808c]">Wallet name</label><input required value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Daily spending" className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none transition placeholder:text-[#a8b3b0] focus:border-[#087f74] focus:ring-2 focus:ring-[#e4f4f0]" /></div><div><label className="mb-1.5 block text-xs font-bold text-[#71808c]">Opening balance</label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#9aa7af]">$</span><input required type="number" min="0" step="0.01" value={balance} onChange={(e) => setBalance(Number(e.target.value))} className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] py-2.5 pl-7 pr-3 text-sm outline-none transition focus:border-[#087f74] focus:ring-2 focus:ring-[#e4f4f0]" /></div></div><button type="submit" className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#087f74] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#075c57]"><Plus size={16} />Add wallet</button></form></CardBody></Card>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{wallets.map((wallet) => <Card key={wallet.id}><CardBody><div className="mb-8 flex items-start justify-between"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e4f4f0] text-[#087f74]"><WalletCards size={18} /></span><button aria-label={`Delete ${wallet.name}`} title="Delete wallet" onClick={() => deleteWallet(wallet.id)} className="rounded-lg p-2 text-[#b3bfbb] transition hover:bg-[#fff1ef] hover:text-[#d76756]"><Trash2 size={16} /></button></div><p className="text-sm font-bold text-[#71808c]">{wallet.name}</p><p className="mt-2 text-2xl font-extrabold tracking-[-.04em] text-[#17212b]">{currency.format(wallet.balance)}</p><p className="mt-2 text-xs text-[#9aa7af]">Available balance</p></CardBody></Card>)}{wallets.length === 0 && <div className="surface flex min-h-[220px] items-center justify-center p-8 text-center sm:col-span-2"><div><WalletCards size={25} className="mx-auto text-[#9aa7af]" /><p className="mt-3 font-bold text-[#17212b]">No wallets yet</p><p className="mt-1 text-sm text-[#9aa7af]">Create one to start tracking your money.</p></div></div>}</div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{wallets.map((wallet) => <Card key={wallet.id}><CardBody><div className="mb-8 flex items-start justify-between"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e4f4f0] text-[#087f74]"><WalletCards size={18} /></span><div className="flex gap-1"><button aria-label={`Edit ${wallet.name}`} title="Edit wallet" onClick={() => editWallet(wallet)} className="rounded-lg p-2 text-[#b3bfbb] transition hover:bg-[#e4f4f0] hover:text-[#087f74]"><Pencil size={16} /></button><button aria-label={`Delete ${wallet.name}`} title="Delete wallet" onClick={() => deleteWallet(wallet.id)} className="rounded-lg p-2 text-[#b3bfbb] transition hover:bg-[#fff1ef] hover:text-[#d76756]"><Trash2 size={16} /></button></div></div><p className="text-sm font-bold text-[#71808c]">{wallet.name}</p><p className="mt-2 text-2xl font-extrabold tracking-[-.04em] text-[#17212b]">{currency.format(wallet.balance)}</p><p className="mt-2 text-xs text-[#9aa7af]">Available balance</p></CardBody></Card>)}{wallets.length === 0 && <div className="surface flex min-h-[220px] items-center justify-center p-8 text-center sm:col-span-2"><div><WalletCards size={25} className="mx-auto text-[#9aa7af]" /><p className="mt-3 font-bold text-[#17212b]">No wallets yet</p><p className="mt-1 text-sm text-[#9aa7af]">Create one to start tracking your money.</p></div></div>}</div>
       </div>
+      {isEditModalOpen && <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#17212b]/35 p-4 backdrop-blur-[2px]"><div role="dialog" aria-modal="true" aria-labelledby="edit-wallet-title" className="w-full max-w-[440px] rounded-2xl bg-white p-6 shadow-2xl"><div className="mb-6 flex items-start justify-between"><div><div className="eyebrow">Wallet settings</div><h2 id="edit-wallet-title" className="mt-1 text-xl font-extrabold text-[#17212b]">Edit wallet</h2><p className="mt-1 text-xs text-[#71808c]">Update the wallet name and current balance.</p></div><button type="button" aria-label="Close edit wallet" onClick={cancelEdit} className="rounded-lg p-2 text-[#9aa7af] hover:bg-[#f4f7f6]"><X size={18} /></button></div><form onSubmit={addWallet} className="space-y-4"><div><label className="mb-1.5 block text-xs font-bold text-[#71808c]">Wallet name</label><input required value={name} onChange={(event) => setName(event.target.value)} className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74] focus:ring-2 focus:ring-[#e4f4f0]" /></div><div><label className="mb-1.5 block text-xs font-bold text-[#71808c]">Balance</label><input required min="0" step="0.01" type="number" value={balance} onChange={(event) => setBalance(Number(event.target.value))} className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74] focus:ring-2 focus:ring-[#e4f4f0]" /></div><div className="flex justify-end gap-3 border-t border-[#edf2f0] pt-5"><button type="button" onClick={cancelEdit} className="rounded-xl border border-[#e3ebe8] px-4 py-2.5 text-sm font-bold text-[#71808c]">Cancel</button><button type="submit" className="rounded-xl bg-[#087f74] px-4 py-2.5 text-sm font-bold text-white">Save changes</button></div></form></div></div>}
     </div>
   );
 };
