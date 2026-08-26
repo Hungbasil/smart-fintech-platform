@@ -174,6 +174,26 @@ export const createInvestment = (request: InvestmentRequest) => api.post<Investm
 export const updateInvestment = (id: string, request: InvestmentRequest) => api.put<Investment>(`/investments/${id}`, request);
 export const deleteInvestment = (id: string) => api.delete(`/investments/${id}`);
 
+export interface MarketPrice {
+  coinSymbol: string;
+  price: number;
+}
+
+export const getMarketPrices = (symbols: string[]) =>
+  api.get<MarketPrice[]>('/investments/market', { params: { symbols: symbols.join(',') } });
+
+export interface MarketCandle {
+  openTime: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export const getMarketCandles = (symbol: string, interval = '1h', limit = 48) =>
+  api.get<MarketCandle[]>('/investments/market/klines', { params: { symbol, interval, limit } });
+
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('authToken');
