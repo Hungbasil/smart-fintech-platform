@@ -28,9 +28,10 @@ public class CacheConfig implements CachingConfigurer {
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(new GenericJackson2JsonRedisSerializer()));
         RedisCacheConfiguration binanceConfiguration = configuration.entryTtl(Duration.ofMinutes(1));
+        RedisCacheConfiguration candleConfiguration = configuration.entryTtl(Duration.ofSeconds(30));
         return RedisCacheManager.builder(connectionFactory)
             .cacheDefaults(configuration)
-            .withInitialCacheConfigurations(Map.of("binance_prices", binanceConfiguration))
+            .withInitialCacheConfigurations(Map.of("binance_prices", binanceConfiguration, "binance_klines", candleConfiguration))
                 .build();
     }
 
