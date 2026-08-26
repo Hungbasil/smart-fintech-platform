@@ -13,6 +13,15 @@
 .positive { color: var(--teal); }
 .negative { color: var(--coral); }
 
+.sidebar-collapsed .sidebar-brand { flex-direction: column; justify-content: center; }
+.sidebar-collapsed .sidebar-text,
+.sidebar-collapsed .sidebar-chevron,
+.sidebar-collapsed .sidebar-submenu,
+.sidebar-collapsed > p { display: none; }
+.sidebar-collapsed nav > button,
+.sidebar-collapsed nav > a,
+.sidebar-collapsed > div:last-child > button { justify-content: center; padding-left: 0; padding-right: 0; }
+
 @media (max-width: 767px) {
   .app-content { width: min(100% - 32px, 620px); padding: 24px 0 92px; }
   .surface-pad { padding: 17px; }
