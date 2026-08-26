@@ -153,6 +153,27 @@ export interface PredictiveAnalytics {
 
 export const getPredictiveAnalytics = () => api.get<PredictiveAnalytics>('/analytics/predict');
 
+export interface Investment {
+  id: string;
+  coinSymbol: string;
+  quantity: number;
+  buyPrice: number;
+  currentPrice: number;
+  profitLoss: number;
+  profitLossPercentage: number;
+}
+
+export interface InvestmentRequest {
+  coinSymbol: string;
+  quantity: number;
+  buyPrice: number;
+}
+
+export const getInvestments = () => api.get<Investment[]>('/investments');
+export const createInvestment = (request: InvestmentRequest) => api.post<Investment>('/investments', request);
+export const updateInvestment = (id: string, request: InvestmentRequest) => api.put<Investment>(`/investments/${id}`, request);
+export const deleteInvestment = (id: string) => api.delete(`/investments/${id}`);
+
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('authToken');

@@ -17,3 +17,7 @@
   .app-content { width: min(100% - 32px, 620px); padding: 24px 0 92px; }
   .surface-pad { padding: 17px; }
 }
+
+@media (max-width: 767px) {
+  .app-content .recharts-responsive-container { min-width: 0; }
+}

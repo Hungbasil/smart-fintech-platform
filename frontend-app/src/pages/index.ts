@@ -7,3 +7,4 @@ export { Categories } from './Categories';
 export { SavingGoals } from './SavingGoals';
 export { Debts } from './Debts';
 export { PredictiveAnalytics } from './PredictiveAnalytics';
+export { Investments } from './Investments';

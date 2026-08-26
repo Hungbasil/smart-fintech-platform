@@ -13,6 +13,7 @@ import { PredictiveAnalytics } from './pages/PredictiveAnalytics';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import { Navigate } from 'react-router-dom';
+import { Investments } from './pages/Investments';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 
@@ -21,7 +22,8 @@ function AppRouter() {
     <BrowserRouter>
       <Layout>
         <Routes>
-          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/" element={<Navigate to="/overview" replace />} />
+          <Route path="/overview" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
           <Route path="/wallets" element={<ProtectedRoute><Wallets /></ProtectedRoute>} />
           <Route path="/analytics" element={<Navigate to="/analytics/overview" replace />} />
@@ -32,6 +34,7 @@ function AppRouter() {
           <Route path="/recurring" element={<ProtectedRoute><Recurring /></ProtectedRoute>} />
           <Route path="/saving-goals" element={<ProtectedRoute><SavingGoals /></ProtectedRoute>} />
           <Route path="/debts" element={<ProtectedRoute><Debts /></ProtectedRoute>} />
+          <Route path="/investments" element={<ProtectedRoute><Investments /></ProtectedRoute>} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
         </Routes>
