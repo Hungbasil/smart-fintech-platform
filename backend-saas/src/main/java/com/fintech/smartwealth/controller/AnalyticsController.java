@@ -3,6 +3,7 @@ package com.fintech.smartwealth.controller;
 import com.fintech.smartwealth.dto.AnalyticsCategoryResponse;
 import com.fintech.smartwealth.dto.AnalyticsMonthlyResponse;
 import com.fintech.smartwealth.dto.AnalyticsSummaryResponse;
+import com.fintech.smartwealth.dto.PredictiveAnalyticsResponse;
 import com.fintech.smartwealth.service.AnalyticsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -45,6 +46,11 @@ public class AnalyticsController {
                                                   @RequestParam(required = false) String fromDate,
                                                   @RequestParam(required = false) String toDate) {
         return analyticsService.getMonthlyAnalytics(walletId, parseDateTime(fromDate), parseDateTime(toDate));
+    }
+
+    @GetMapping("/predict")
+    public PredictiveAnalyticsResponse predict() {
+        return analyticsService.predictNextMonthExpense();
     }
 
     private LocalDateTime parseDateTime(String value) {

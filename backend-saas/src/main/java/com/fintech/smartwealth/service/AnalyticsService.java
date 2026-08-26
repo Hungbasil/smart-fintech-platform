@@ -3,6 +3,7 @@ package com.fintech.smartwealth.service;
 import com.fintech.smartwealth.dto.AnalyticsCategoryResponse;
 import com.fintech.smartwealth.dto.AnalyticsMonthlyResponse;
 import com.fintech.smartwealth.dto.AnalyticsSummaryResponse;
+import com.fintech.smartwealth.dto.PredictiveAnalyticsResponse;
 import com.fintech.smartwealth.repository.TransactionRepository;
 import com.fintech.smartwealth.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -46,6 +50,31 @@ public class AnalyticsService {
                         valueOrZero(item.getExpense())))
                 .toList();
     }
+
+            public PredictiveAnalyticsResponse predictNextMonthExpense() {
+            LocalDate currentMonth = LocalDate.now().withDayOfMonth(1);
+            LocalDate firstMonth = currentMonth.minusMonths(3);
+            UUID userId = securityUtils.getCurrentUserId();
+            Map<String, BigDecimal> expenses = new HashMap<>();
+            transactionRepository.getHistoricalExpenses(userId, firstMonth.atStartOfDay(), currentMonth.atStartOfDay())
+                .forEach(item -> expenses.put(item.getMonth(), valueOrZero(item.getAmount())));
+
+            List<PredictiveAnalyticsResponse.HistoricalExpense> historicalData = new ArrayList<>();
+            for (int index = 0; index < 3; index++) {
+                LocalDate month = firstMonth.plusMonths(index);
+                historicalData.add(new PredictiveAnalyticsResponse.HistoricalExpense(
+                    month.toString().substring(0, 7), expenses.getOrDefault(month.toString().substring(0, 7), BigDecimal.ZERO)));
+            }
+
+            BigDecimal predictedAmount = historicalData.stream()
+                .map(PredictiveAnalyticsResponse.HistoricalExpense::amount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .divide(BigDecimal.valueOf(historicalData.size()), 2, java.math.RoundingMode.HALF_UP);
+            BigDecimal latest = historicalData.get(2).amount();
+            BigDecimal previous = historicalData.get(0).amount();
+            String trend = latest.compareTo(previous) > 0 ? "INCREASING" : latest.compareTo(previous) < 0 ? "DECREASING" : "STABLE";
+            return new PredictiveAnalyticsResponse(predictedAmount, historicalData, trend);
+            }
 
     private UUID currentUserId() {
         return securityUtils.isAdmin() ? null : securityUtils.getCurrentUserId();

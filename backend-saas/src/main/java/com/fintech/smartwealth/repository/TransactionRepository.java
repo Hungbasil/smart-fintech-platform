@@ -182,4 +182,27 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
                                                       Pageable pageable);
 
     Optional<Transaction> findByIdAndWalletUserId(UUID id, UUID userId);
+
+                interface HistoricalExpenseProjection {
+                                String getMonth();
+                                BigDecimal getAmount();
+                }
+
+                @Query(value = """
+                                                SELECT TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM') AS month,
+                                                                         COALESCE(SUM(t.amount), 0) AS amount
+                                                FROM transactions t
+                                                JOIN wallets w ON w.id = t.wallet_id
+                                                JOIN categories c ON c.id = t.category_id
+                                                WHERE UPPER(c.type) = 'EXPENSE'
+                                                        AND t.transaction_type <> 'TRANSFER'
+                                                        AND w.user_id = :userId
+                                                        AND t.transaction_date >= :fromDate
+                                                        AND t.transaction_date < :toDate
+                                                GROUP BY DATE_TRUNC('month', t.transaction_date)
+                                                ORDER BY DATE_TRUNC('month', t.transaction_date)
+                                                """, nativeQuery = true)
+                java.util.List<HistoricalExpenseProjection> getHistoricalExpenses(@Param("userId") UUID userId,
+                                                                                                                                                                                                                                                                                                @Param("fromDate") LocalDateTime fromDate,
+                                                                                                                                                                                                                                                                                                @Param("toDate") LocalDateTime toDate);
 }
