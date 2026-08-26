@@ -9,8 +9,10 @@ import { Budgets } from './pages/Budgets';
 import { Recurring } from './pages/Recurring';
 import { SavingGoals } from './pages/SavingGoals';
 import { Debts } from './pages/Debts';
+import { PredictiveAnalytics } from './pages/PredictiveAnalytics';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import { Navigate } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 
@@ -22,7 +24,9 @@ function AppRouter() {
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
           <Route path="/wallets" element={<ProtectedRoute><Wallets /></ProtectedRoute>} />
-          <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+          <Route path="/analytics" element={<Navigate to="/analytics/overview" replace />} />
+          <Route path="/analytics/overview" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+          <Route path="/analytics/predictive" element={<ProtectedRoute><PredictiveAnalytics /></ProtectedRoute>} />
           <Route path="/categories" element={<ProtectedRoute><Categories /></ProtectedRoute>} />
           <Route path="/budgets" element={<ProtectedRoute><Budgets /></ProtectedRoute>} />
           <Route path="/recurring" element={<ProtectedRoute><Recurring /></ProtectedRoute>} />

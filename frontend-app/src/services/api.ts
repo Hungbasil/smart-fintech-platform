@@ -140,6 +140,19 @@ export const getAnalyticsCategories = (query?: AnalyticsQuery) =>
 export const getAnalyticsMonthly = (query?: AnalyticsQuery) =>
   api.get<MonthlyTrend[]>('/analytics/monthly', { params: query });
 
+export interface PredictiveHistoricalExpense {
+  month: string;
+  amount: number;
+}
+
+export interface PredictiveAnalytics {
+  predictedAmount: number;
+  historicalData: PredictiveHistoricalExpense[];
+  trend: 'INCREASING' | 'DECREASING' | 'STABLE';
+}
+
+export const getPredictiveAnalytics = () => api.get<PredictiveAnalytics>('/analytics/predict');
+
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('authToken');
