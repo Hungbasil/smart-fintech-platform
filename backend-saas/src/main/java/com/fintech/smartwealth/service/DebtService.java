@@ -17,6 +17,7 @@ import com.fintech.smartwealth.repository.UserRepository;
 import com.fintech.smartwealth.repository.WalletRepository;
 import com.fintech.smartwealth.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -73,6 +74,7 @@ public class DebtService {
     }
 
     @Transactional
+    @CacheEvict(value = "user_analytics", allEntries = true)
     public DebtResponse settleDebt(UUID id, SettleDebtRequest request) {
         Debt debt = ownedDebt(id);
         if (debt.getStatus() == DebtStatus.SETTLED) {

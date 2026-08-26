@@ -7,6 +7,7 @@ import com.fintech.smartwealth.dto.PredictiveAnalyticsResponse;
 import com.fintech.smartwealth.repository.TransactionRepository;
 import com.fintech.smartwealth.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -25,6 +26,7 @@ public class AnalyticsService {
     private final TransactionRepository transactionRepository;
     private final SecurityUtils securityUtils;
 
+    @Cacheable(value = "user_analytics", key = "'summary:' + @securityUtils.getCurrentUserId() + ':' + #walletId + ':' + #fromDate + ':' + #toDate", condition = "!@securityUtils.isAdmin()")
     public AnalyticsSummaryResponse getSummary(UUID walletId, LocalDateTime fromDate, LocalDateTime toDate) {
         TransactionRepository.AnalyticsSummaryProjection result = transactionRepository
                 .getAnalyticsSummary(currentUserId(), walletId, fromDate, toDate);
@@ -33,12 +35,14 @@ public class AnalyticsService {
         return new AnalyticsSummaryResponse(income, expense, income.subtract(expense), result.getTransactionCount());
     }
 
+    @Cacheable(value = "user_analytics", key = "'categories:' + @securityUtils.getCurrentUserId() + ':' + #walletId + ':' + #fromDate + ':' + #toDate", condition = "!@securityUtils.isAdmin()")
     public List<AnalyticsCategoryResponse> getExpenseByCategory(UUID walletId, LocalDateTime fromDate, LocalDateTime toDate) {
         return transactionRepository.getExpenseByCategory(currentUserId(), walletId, fromDate, toDate).stream()
                 .map(item -> new AnalyticsCategoryResponse(item.getCategory(), valueOrZero(item.getAmount())))
                 .toList();
     }
 
+    @Cacheable(value = "user_analytics", key = "'monthly:' + @securityUtils.getCurrentUserId() + ':' + #walletId + ':' + #fromDate + ':' + #toDate", condition = "!@securityUtils.isAdmin()")
     public List<AnalyticsMonthlyResponse> getMonthlyAnalytics(UUID walletId, LocalDateTime fromDate, LocalDateTime toDate) {
         LocalDate firstMonth = LocalDate.now().withDayOfMonth(1).minusMonths(5);
         LocalDateTime effectiveFrom = fromDate == null ? firstMonth.atStartOfDay() : fromDate;
@@ -51,6 +55,7 @@ public class AnalyticsService {
                 .toList();
     }
 
+            @Cacheable(value = "user_analytics", key = "'predictive:' + @securityUtils.getCurrentUserId()", condition = "!@securityUtils.isAdmin()")
             public PredictiveAnalyticsResponse predictNextMonthExpense() {
             LocalDate currentMonth = LocalDate.now().withDayOfMonth(1);
             LocalDate firstMonth = currentMonth.minusMonths(3);

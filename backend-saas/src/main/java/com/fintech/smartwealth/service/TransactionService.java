@@ -12,6 +12,7 @@ import com.fintech.smartwealth.repository.TransactionRepository;
 import com.fintech.smartwealth.repository.WalletRepository;
 import com.fintech.smartwealth.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -74,6 +75,7 @@ public class TransactionService {
     }
 
     @Transactional
+    @CacheEvict(value = "user_analytics", allEntries = true)
     public TransactionResponse create(CreateTransactionRequest request) {
         Wallet wallet = walletRepository.findById(request.getWalletId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found"));
@@ -105,6 +107,7 @@ public class TransactionService {
     }
 
     @Transactional
+    @CacheEvict(value = "user_analytics", allEntries = true)
     public TransactionResponse transferFunds(TransferRequest request) {
         if (request.getFromWalletId().equals(request.getToWalletId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Source and destination wallets must be different");
@@ -148,6 +151,7 @@ public class TransactionService {
     }
 
     @Transactional
+    @CacheEvict(value = "user_analytics", allEntries = true)
     public TransactionResponse update(UUID id, UpdateTransactionRequest request) {
         Transaction existing = transactionRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found"));
@@ -203,6 +207,7 @@ public class TransactionService {
     }
 
     @Transactional
+    @CacheEvict(value = "user_analytics", allEntries = true)
     public void delete(UUID id) {
         Transaction transaction = transactionRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found"));

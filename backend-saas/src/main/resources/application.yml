@@ -22,6 +22,17 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
+  cache:
+    type: redis
+    redis:
+      time-to-live: 10m
+      cache-null-values: false
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      connect-timeout: 500ms
+      timeout: 500ms
 management:
   endpoints:
     web:
