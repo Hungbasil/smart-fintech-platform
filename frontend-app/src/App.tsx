@@ -8,6 +8,7 @@ import { Categories } from './pages/Categories';
 import { Budgets } from './pages/Budgets';
 import { Recurring } from './pages/Recurring';
 import { SavingGoals } from './pages/SavingGoals';
+import { Debts } from './pages/Debts';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -26,6 +27,7 @@ function AppRouter() {
           <Route path="/budgets" element={<ProtectedRoute><Budgets /></ProtectedRoute>} />
           <Route path="/recurring" element={<ProtectedRoute><Recurring /></ProtectedRoute>} />
           <Route path="/saving-goals" element={<ProtectedRoute><SavingGoals /></ProtectedRoute>} />
+          <Route path="/debts" element={<ProtectedRoute><Debts /></ProtectedRoute>} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
         </Routes>

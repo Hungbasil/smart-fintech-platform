@@ -80,6 +80,33 @@ export const updateSavingGoal = (id: string, request: SavingGoalRequest) => api.
 export const deleteSavingGoal = (id: string) => api.delete(`/saving-goals/${id}`);
 export const addSavingGoalFunds = (id: string, request: AddSavingGoalFundsRequest) => api.post<SavingGoal>(`/saving-goals/${id}/add-funds`, request);
 
+export type DebtType = 'LEND' | 'BORROW';
+export type DebtStatus = 'PENDING' | 'SETTLED';
+
+export interface Debt {
+  id: string;
+  counterpartyName: string;
+  amount: number;
+  type: DebtType;
+  status: DebtStatus;
+  dueDate: string | null;
+  description: string | null;
+}
+
+export interface DebtRequest {
+  counterpartyName: string;
+  amount: number;
+  type: DebtType;
+  dueDate?: string;
+  description?: string;
+}
+
+export const getDebts = () => api.get<Debt[]>('/debts');
+export const createDebt = (request: DebtRequest) => api.post<Debt>('/debts', request);
+export const updateDebt = (id: string, request: DebtRequest) => api.put<Debt>(`/debts/${id}`, request);
+export const deleteDebt = (id: string) => api.delete(`/debts/${id}`);
+export const settleDebt = (id: string, walletId: string) => api.post<Debt>(`/debts/${id}/settle`, { walletId });
+
 export interface AnalyticsQuery {
   walletId?: string;
   fromDate?: string;
