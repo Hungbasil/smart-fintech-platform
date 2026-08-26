@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.Map;
 
 @Configuration
 public class CacheConfig implements CachingConfigurer {
@@ -26,8 +27,10 @@ public class CacheConfig implements CachingConfigurer {
                 .disableCachingNullValues()
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(new GenericJackson2JsonRedisSerializer()));
+        RedisCacheConfiguration binanceConfiguration = configuration.entryTtl(Duration.ofMinutes(1));
         return RedisCacheManager.builder(connectionFactory)
-                .cacheDefaults(configuration)
+            .cacheDefaults(configuration)
+            .withInitialCacheConfigurations(Map.of("binance_prices", binanceConfiguration))
                 .build();
     }
 

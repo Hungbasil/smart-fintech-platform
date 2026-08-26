@@ -57,3 +57,5 @@ jwt:
 ollama:
   url: ${OLLAMA_URL:http://localhost:11434}
   model: ${OLLAMA_MODEL:llama3.2-vision:11b}
+binance:
+  base-url: ${BINANCE_API_URL:https://api.binance.com}
