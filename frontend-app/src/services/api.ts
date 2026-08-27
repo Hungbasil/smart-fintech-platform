@@ -196,9 +196,10 @@ export const getMarketCandles = (symbol: string, interval = '1h', limit = 48) =>
 
 export interface AiChatRequest {
   message: string;
+  image?: string;
 }
 
-export const askAi = (message: string) => api.post<string>('/ai/chat', { message } satisfies AiChatRequest);
+export const askAi = (request: AiChatRequest) => api.post<string>('/ai/chat', request);
 
 api.interceptors.request.use(
   (config) => {
