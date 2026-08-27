@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public class CreateTransactionRequest {
@@ -25,6 +27,10 @@ public class CreateTransactionRequest {
 
     @NotNull(message = "Category id is required")
     private UUID categoryId;
+
+    private List<String> splitWithNames = new ArrayList<>();
+
+    private Boolean isSplit = false;
 
     public BigDecimal getAmount() {
         return amount;
@@ -64,5 +70,21 @@ public class CreateTransactionRequest {
 
     public void setCategoryId(UUID categoryId) {
         this.categoryId = categoryId;
+    }
+
+    public List<String> getSplitWithNames() {
+        return splitWithNames;
+    }
+
+    public void setSplitWithNames(List<String> splitWithNames) {
+        this.splitWithNames = splitWithNames;
+    }
+
+    public Boolean getIsSplit() {
+        return isSplit;
+    }
+
+    public void setIsSplit(Boolean isSplit) {
+        this.isSplit = isSplit;
     }
 }

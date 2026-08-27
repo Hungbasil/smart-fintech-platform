@@ -1,9 +1,11 @@
 package com.fintech.smartwealth.service;
 
 import com.fintech.smartwealth.dto.CreateTransactionRequest;
+import com.fintech.smartwealth.dto.DebtRequest;
 import com.fintech.smartwealth.dto.TransactionResponse;
 import com.fintech.smartwealth.dto.TransferRequest;
 import com.fintech.smartwealth.entity.Category;
+import com.fintech.smartwealth.entity.DebtType;
 import com.fintech.smartwealth.entity.Transaction;
 import com.fintech.smartwealth.entity.Wallet;
 import com.fintech.smartwealth.repository.CategoryRepository;
@@ -18,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,6 +40,9 @@ class TransactionServiceTest {
 
     @Mock
     private CategoryRepository categoryRepository;
+
+    @Mock
+    private DebtService debtService;
 
     @Mock
     private SecurityUtils securityUtils;
@@ -118,6 +124,44 @@ class TransactionServiceTest {
 
         assertThat(wallet.getBalance()).isEqualByComparingTo("125.00");
         verify(walletRepository).save(wallet);
+    }
+
+    @Test
+    void createSplitExpenseShouldCreateOneLendDebtPerPerson() {
+        UUID userId = UUID.randomUUID();
+        Wallet wallet = wallet(userId, "100.00");
+        Category category = new Category();
+        category.setId(UUID.randomUUID());
+        category.setType("EXPENSE");
+
+        CreateTransactionRequest request = new CreateTransactionRequest();
+        request.setAmount(new BigDecimal("90.00"));
+        request.setDescription("Dinner");
+        request.setTransactionDate(java.time.LocalDateTime.now());
+        request.setWalletId(wallet.getId());
+        request.setCategoryId(category.getId());
+        request.setIsSplit(true);
+        request.setSplitWithNames(List.of("Alice", " Bob "));
+
+        when(walletRepository.findById(wallet.getId())).thenReturn(Optional.of(wallet));
+        when(categoryRepository.findById(category.getId())).thenReturn(Optional.of(category));
+        when(securityUtils.isAdmin()).thenReturn(false);
+        when(securityUtils.getCurrentUserId()).thenReturn(userId);
+        when(walletRepository.save(any(Wallet.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        transactionService.create(request);
+
+        assertThat(wallet.getBalance()).isEqualByComparingTo("10.00");
+        verify(debtService, org.mockito.Mockito.times(2)).create(any(DebtRequest.class));
+        verify(debtService).create(org.mockito.ArgumentMatchers.argThat(debt ->
+                debt.counterpartyName().equals("Alice")
+                        && debt.amount().compareTo(new BigDecimal("30.00")) == 0
+                        && debt.type() == DebtType.LEND));
+        verify(debtService).create(org.mockito.ArgumentMatchers.argThat(debt ->
+                debt.counterpartyName().equals("Bob")
+                        && debt.amount().compareTo(new BigDecimal("30.00")) == 0
+                        && debt.type() == DebtType.LEND));
     }
 
     @Test

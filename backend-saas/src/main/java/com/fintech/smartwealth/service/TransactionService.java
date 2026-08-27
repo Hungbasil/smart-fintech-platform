@@ -1,10 +1,12 @@
 package com.fintech.smartwealth.service;
 
 import com.fintech.smartwealth.dto.CreateTransactionRequest;
+import com.fintech.smartwealth.dto.DebtRequest;
 import com.fintech.smartwealth.dto.TransactionResponse;
 import com.fintech.smartwealth.dto.TransferRequest;
 import com.fintech.smartwealth.dto.UpdateTransactionRequest;
 import com.fintech.smartwealth.entity.Category;
+import com.fintech.smartwealth.entity.DebtType;
 import com.fintech.smartwealth.entity.Transaction;
 import com.fintech.smartwealth.entity.Wallet;
 import com.fintech.smartwealth.repository.CategoryRepository;
@@ -22,6 +24,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -32,6 +35,7 @@ public class TransactionService {
     private final WalletRepository walletRepository;
     private final CategoryRepository categoryRepository;
     private final SecurityUtils securityUtils;
+    private final DebtService debtService;
 
     @Transactional(readOnly = true)
     public Page<TransactionResponse> findAll(UUID walletId,
@@ -103,7 +107,27 @@ public class TransactionService {
 
         wallet.setBalance(updatedBalance);
         walletRepository.save(wallet);
-        return toResponse(transactionRepository.save(transaction));
+        Transaction savedTransaction = transactionRepository.save(transaction);
+        createSplitDebts(request, category, savedTransaction.getAmount());
+        return toResponse(savedTransaction);
+    }
+
+    private void createSplitDebts(CreateTransactionRequest request, Category category, BigDecimal totalAmount) {
+        List<String> names = request.getSplitWithNames() == null ? List.of() : request.getSplitWithNames().stream()
+                .map(name -> name == null ? "" : name.trim())
+                .filter(name -> !name.isEmpty())
+                .toList();
+        if (!Boolean.TRUE.equals(request.getIsSplit()) || names.isEmpty()) {
+            return;
+        }
+        if (!"EXPENSE".equalsIgnoreCase(category.getType())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only expense transactions can be split");
+        }
+
+        BigDecimal splitAmount = totalAmount.divide(BigDecimal.valueOf(names.size() + 1L), 2, java.math.RoundingMode.HALF_UP);
+        for (String name : names) {
+            debtService.create(new DebtRequest(name, splitAmount, DebtType.LEND, null, "Split bill: " + request.getDescription()));
+        }
     }
 
     @Transactional
