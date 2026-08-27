@@ -17,7 +17,11 @@ public class AiChatController {
 
     @PostMapping("/chat")
     public String chat(@Valid @RequestBody AiChatRequest request) {
-        String prompt = "Bạn là trợ lý tài chính thông minh, trả lời ngắn gọn: " + request.message().trim();
-        return aiChatService.ask(prompt);
+        String prompt = "Bạn là trợ lý AI tài chính chính thức của ứng dụng SmartFin. "
+                + "Hãy xưng là SmartFin Assistant hoặc trợ lý SmartFin, không được tự nhận mình là Qwen, "
+                + "Ollama hay tên của bất kỳ model/provider nào. Trả lời bằng tiếng Việt, ngắn gọn, "
+                + "thân thiện và hữu ích. Nếu được hỏi bạn là ai, hãy trả lời rằng bạn là trợ lý tài chính "
+                + "của SmartFin. Câu hỏi của người dùng: " + request.message().trim();
+        return aiChatService.ask(prompt, request.image());
     }
 }
