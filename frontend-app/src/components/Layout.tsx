@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import auth from '../services/auth';
 import AiChatWidget from './AiChatWidget';
+import { API_BASE_URL } from '../services/api';
+import { toast } from '../services/notifications';
 import { BarChart3, CalendarClock, ChevronDown, ChevronRight, Goal, HandCoins, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, ReceiptText, Tag, Target, WalletCards, Bitcoin } from 'lucide-react';
 
 const navigation = [
@@ -20,6 +22,17 @@ export const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) =
   const [overviewOpen, setOverviewOpen] = useState(location.pathname === '/' || location.pathname.startsWith('/overview') || location.pathname.startsWith('/investments'));
   const [profileOpen, setProfileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    const token = auth.getToken();
+    if (!token) return;
+
+    const eventSource = new EventSource(`${API_BASE_URL}/notifications/subscribe?token=${encodeURIComponent(token)}`);
+    eventSource.addEventListener('notification', (event) => {
+      toast.error((event as MessageEvent).data, { duration: 8000 });
+    });
+    return () => eventSource.close();
+  }, []);
 
   if (!auth.isAuthenticated()) {
     return <>{children}</>;

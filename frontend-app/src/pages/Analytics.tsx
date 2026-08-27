@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { Download } from 'lucide-react';
 import { Card, CardHeader, CardBody } from '../components';
-import { getAnalyticsCategories, getAnalyticsMonthly, getAnalyticsSummary, type AnalyticsSummary } from '../services/api';
+import api, { getAnalyticsCategories, getAnalyticsMonthly, getAnalyticsSummary, type AnalyticsSummary } from '../services/api';
 import { currency } from '../services/format';
-import { getApiErrorMessage } from '../services/notifications';
+import { getApiErrorMessage, toast } from '../services/notifications';
 
 interface CategoryBreakdown {
   category: string;
@@ -25,6 +26,7 @@ export const Analytics: React.FC = () => {
   const [monthlyData, setMonthlyData] = useState<MonthlyAnalytics[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     const fetchAnalytics = async () => {
@@ -48,12 +50,30 @@ export const Analytics: React.FC = () => {
     fetchAnalytics();
   }, []);
 
+  const exportPdf = async () => {
+    try {
+      setExporting(true);
+      const response = await api.get('/analytics/export/pdf', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(response.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'financial_report.pdf';
+      link.click();
+      window.URL.revokeObjectURL(url);
+      toast.success('Financial report downloaded');
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Unable to export financial report'));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (loading) return <div className="p-8">Loading...</div>;
   if (error) return <div className="p-8 text-red-600">Error: {error}</div>;
 
   return (
     <div>
-      <div className="mb-8"><div className="eyebrow">Patterns and insights</div><h1 className="page-title">Analytics</h1><p className="page-subtitle">Aggregated directly by PostgreSQL for the complete transaction history.</p></div>
+      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="eyebrow">Patterns and insights</div><h1 className="page-title">Analytics</h1><p className="page-subtitle">Aggregated directly by PostgreSQL for the complete transaction history.</p></div><button type="button" onClick={exportPdf} disabled={exporting} className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#087f74] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#075c57] disabled:cursor-not-allowed disabled:opacity-50"><Download size={17} />{exporting ? 'Preparing PDF...' : 'Download PDF report'}</button></div>
 
       <div className="mb-7 grid grid-cols-1 gap-4 md:grid-cols-3">
         {[
