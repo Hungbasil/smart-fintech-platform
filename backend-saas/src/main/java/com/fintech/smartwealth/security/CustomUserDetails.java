@@ -16,12 +16,14 @@ public class CustomUserDetails implements UserDetails {
     private final String email;
     private final String password;
     private final Role role;
+    private final boolean active;
 
     public CustomUserDetails(User user) {
         this.id = user.getId();
         this.email = user.getEmail();
         this.password = user.getPassword();
         this.role = user.getRole();
+        this.active = user.isActive();
     }
 
     public UUID getId() {
@@ -60,6 +62,6 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return active;
     }
 }

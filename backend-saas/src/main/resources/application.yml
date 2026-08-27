@@ -33,6 +33,17 @@ spring:
       port: ${REDIS_PORT:6379}
       connect-timeout: 500ms
       timeout: 500ms
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:quizwhite212@gmail.com}
+    password: ${MAIL_PASSWORD:hdwn ndzf hhho rxxr}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 management:
   endpoints:
     web:

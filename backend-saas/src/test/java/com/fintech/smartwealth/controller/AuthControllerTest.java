@@ -150,6 +150,10 @@ class AuthControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.user.email").value(normalizedEmail));
 
+        User registered = userRepository.findByEmail(normalizedEmail).orElseThrow();
+        registered.setActive(true);
+        userRepository.save(registered);
+
         String loginPayload = """
                 {
                   "email": "%s",
