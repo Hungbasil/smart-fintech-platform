@@ -54,8 +54,11 @@ springdoc:
 jwt:
   secret: ${JWT_SECRET}
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+app:
+  ai:
+    provider: ${AI_PROVIDER:ollama}
 ollama:
   url: ${OLLAMA_URL:http://localhost:11434}
-  model: ${OLLAMA_MODEL:llama3.2-vision:11b}
+  model: ${OLLAMA_MODEL:qwen2.5:latest}
 binance:
   base-url: ${BINANCE_API_URL:https://api.binance.com}
