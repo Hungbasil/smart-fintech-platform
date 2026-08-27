@@ -21,6 +21,9 @@ export interface RegisterRequest {
   password: string;
 }
 
+export interface OtpRequest { email: string; otp: string }
+export interface ResetPasswordRequest extends OtpRequest { newPassword: string }
+
 export async function login(payload: LoginRequest): Promise<AxiosResponse<any>> {
   const res = await api.post('/auth/login', payload);
   const token = res.data?.token || res.data?.accessToken || res.data?.access_token;
@@ -37,6 +40,11 @@ export async function register(payload: RegisterRequest): Promise<AxiosResponse<
   const res = await api.post('/auth/register', payload);
   return res;
 }
+
+export const verifyRegistration = (payload: OtpRequest) => api.post('/auth/verify-registration', payload);
+export const resendRegistration = (email: string) => api.post('/auth/resend-registration', { email });
+export const forgotPassword = (email: string) => api.post('/auth/forgot-password', { email });
+export const resetPassword = (payload: ResetPasswordRequest) => api.post('/auth/reset-password', payload);
 
 export function logout() {
   localStorage.removeItem(TOKEN_KEY);
