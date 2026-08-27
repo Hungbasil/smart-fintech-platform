@@ -194,6 +194,12 @@ export interface MarketCandle {
 export const getMarketCandles = (symbol: string, interval = '1h', limit = 48) =>
   api.get<MarketCandle[]>('/investments/market/klines', { params: { symbol, interval, limit } });
 
+export interface AiChatRequest {
+  message: string;
+}
+
+export const askAi = (message: string) => api.post<string>('/ai/chat', { message } satisfies AiChatRequest);
+
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('authToken');
