@@ -10,9 +10,12 @@ import org.springframework.data.repository.query.Param;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
+
+        List<Transaction> findTop10ByWalletUserIdOrderByTransactionDateDesc(UUID userId);
 
         boolean existsByWalletId(UUID walletId);
         boolean existsByCategoryId(UUID categoryId);

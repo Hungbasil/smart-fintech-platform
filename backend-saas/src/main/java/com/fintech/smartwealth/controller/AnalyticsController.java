@@ -5,6 +5,7 @@ import com.fintech.smartwealth.dto.AnalyticsMonthlyResponse;
 import com.fintech.smartwealth.dto.AnalyticsSummaryResponse;
 import com.fintech.smartwealth.dto.PredictiveAnalyticsResponse;
 import com.fintech.smartwealth.service.AnalyticsService;
+import com.fintech.smartwealth.service.PdfExportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,6 +13,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -26,6 +30,7 @@ import java.util.UUID;
 public class AnalyticsController {
 
     private final AnalyticsService analyticsService;
+    private final PdfExportService pdfExportService;
 
     @GetMapping("/summary")
     public AnalyticsSummaryResponse summary(@RequestParam(required = false) UUID walletId,
@@ -51,6 +56,15 @@ public class AnalyticsController {
     @GetMapping("/predict")
     public PredictiveAnalyticsResponse predict() {
         return analyticsService.predictNextMonthExpense();
+    }
+
+    @GetMapping(value = "/export/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> exportPdf() {
+        byte[] report = pdfExportService.generateCurrentUserReport();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=financial_report.pdf")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(report);
     }
 
     private LocalDateTime parseDateTime(String value) {

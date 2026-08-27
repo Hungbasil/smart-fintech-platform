@@ -10,6 +10,7 @@ import com.fintech.smartwealth.entity.DebtType;
 import com.fintech.smartwealth.entity.Transaction;
 import com.fintech.smartwealth.entity.Wallet;
 import com.fintech.smartwealth.repository.CategoryRepository;
+import com.fintech.smartwealth.repository.BudgetRepository;
 import com.fintech.smartwealth.repository.TransactionRepository;
 import com.fintech.smartwealth.repository.WalletRepository;
 import com.fintech.smartwealth.security.SecurityUtils;
@@ -24,6 +25,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,8 +36,10 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final WalletRepository walletRepository;
     private final CategoryRepository categoryRepository;
+    private final BudgetRepository budgetRepository;
     private final SecurityUtils securityUtils;
     private final DebtService debtService;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public Page<TransactionResponse> findAll(UUID walletId,
@@ -109,7 +113,25 @@ public class TransactionService {
         walletRepository.save(wallet);
         Transaction savedTransaction = transactionRepository.save(transaction);
         createSplitDebts(request, category, savedTransaction.getAmount());
+        notifyIfBudgetExceeded(wallet, category, savedTransaction.getTransactionDate());
         return toResponse(savedTransaction);
+    }
+
+    private void notifyIfBudgetExceeded(Wallet wallet, Category category, LocalDateTime transactionDate) {
+        if (!"EXPENSE".equalsIgnoreCase(category.getType())) {
+            return;
+        }
+        YearMonth month = YearMonth.from(transactionDate);
+        budgetRepository.findByUserIdAndCategoryIdAndMonthAndYear(
+                        wallet.getUser().getId(), category.getId(), month.getMonthValue(), month.getYear())
+                .ifPresent(budget -> {
+                    BigDecimal spent = transactionRepository.sumExpenseByUserAndCategoryBetween(
+                            wallet.getUser().getId(), category.getId(), month.atDay(1).atStartOfDay(), month.plusMonths(1).atDay(1).atStartOfDay());
+                    if (spent.compareTo(budget.getAmount()) > 0) {
+                        notificationService.sendNotification(wallet.getUser().getId(),
+                                "Budget alert: " + category.getName() + " spending has exceeded your monthly budget.");
+                    }
+                });
     }
 
     private void createSplitDebts(CreateTransactionRequest request, Category category, BigDecimal totalAmount) {

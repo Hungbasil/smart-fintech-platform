@@ -9,6 +9,7 @@ import com.fintech.smartwealth.entity.DebtType;
 import com.fintech.smartwealth.entity.Transaction;
 import com.fintech.smartwealth.entity.Wallet;
 import com.fintech.smartwealth.repository.CategoryRepository;
+import com.fintech.smartwealth.repository.BudgetRepository;
 import com.fintech.smartwealth.repository.TransactionRepository;
 import com.fintech.smartwealth.repository.WalletRepository;
 import com.fintech.smartwealth.security.SecurityUtils;
@@ -42,7 +43,13 @@ class TransactionServiceTest {
     private CategoryRepository categoryRepository;
 
     @Mock
+    private BudgetRepository budgetRepository;
+
+    @Mock
     private DebtService debtService;
+
+    @Mock
+    private NotificationService notificationService;
 
     @Mock
     private SecurityUtils securityUtils;
