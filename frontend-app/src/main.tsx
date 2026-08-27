@@ -7,6 +7,6 @@ import { Toaster } from 'sonner'
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
-    <Toaster position="top-right" richColors closeButton duration={3500} />
+    <Toaster position="top-right" closeButton duration={3200} toastOptions={{ className: 'app-toast' }} />
   </StrictMode>,
 )
