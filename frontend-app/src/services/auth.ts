@@ -53,6 +53,22 @@ export function logout() {
 
 export function completeOAuthLogin(token: string) {
   localStorage.setItem(TOKEN_KEY, token);
+
+  const payload = token.split('.')[1];
+  const claims = JSON.parse(decodeURIComponent(
+    atob(payload.replace(/-/g, '+').replace(/_/g, '/'))
+      .split('')
+      .map((character) => `%${(`00${character.charCodeAt(0).toString(16)}`).slice(-2)}`)
+      .join(''),
+  )) as { userId?: string; fullName?: string; sub?: string };
+
+  if (claims.userId && claims.sub) {
+    localStorage.setItem(USER_KEY, JSON.stringify({
+      id: claims.userId,
+      fullName: claims.fullName || claims.sub,
+      email: claims.sub,
+    }));
+  }
 }
 
 export function getToken(): string | null {
