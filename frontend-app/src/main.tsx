@@ -1,12 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import App from './App.tsx'
-import { Toaster } from 'sonner'
+import AppRoot from './components/AppRoot'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
-    <Toaster position="top-right" closeButton duration={3200} toastOptions={{ className: 'app-toast' }} />
+    <AppRoot />
   </StrictMode>,
 )
