@@ -14,6 +14,9 @@ public class EmailService {
     @Value("${spring.mail.username:}")
     private String from;
 
+    @Value("${MAIL_FROM_NAME:SmartFin}")
+    private String fromName;
+
     public void sendOtpEmail(String toEmail, String otp) {
       if (from == null || from.isBlank()) {
         return;
@@ -22,7 +25,7 @@ public class EmailService {
             var message = mailSender.createMimeMessage();
             var helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setTo(toEmail);
-            if (from != null && !from.isBlank()) helper.setFrom(from);
+            if (from != null && !from.isBlank()) helper.setFrom(from, fromName);
             helper.setSubject("Your SmartFin verification code");
             helper.setText("""
                     <div style="font-family:Arial,sans-serif;background:#f4f7f6;padding:32px;color:#17212b">
