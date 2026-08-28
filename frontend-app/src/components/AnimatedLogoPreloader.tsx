@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import animatedLogo from '../assets/animated-logo.svg';
 
-export const SplashScreen: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
+export const AnimatedLogoPreloader: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
   const [ready, setReady] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
@@ -16,12 +16,16 @@ export const SplashScreen: React.FC<{ onComplete: () => void }> = ({ onComplete 
   }, [onComplete, ready]);
 
   return (
-    <div className={`splash-screen ${ready ? 'splash-screen-ready' : ''} ${leaving ? 'splash-screen-leaving' : ''}`} role="status" aria-label="Loading SmartFin">
-      <div className="splash-content">
-        <img src={animatedLogo} alt="SmartFin" className="splash-logo" onLoad={() => setReady(true)} onError={() => setReady(true)} />
-      </div>
+    <div className={`logo-preloader ${ready ? 'logo-preloader-ready' : ''} ${leaving ? 'logo-preloader-leaving' : ''}`} role="status" aria-label="Loading SmartFin">
+      <img
+        src={animatedLogo}
+        alt="SmartFin"
+        className="logo-preloader-image"
+        onLoad={() => setReady(true)}
+        onError={() => setReady(true)}
+      />
     </div>
   );
 };
 
-export default SplashScreen;
+export default AnimatedLogoPreloader;

@@ -2,3 +2,4 @@
 export { Button } from './Button';
 export { Card, CardHeader, CardBody } from './Card';
 export { Table, TableHead, TableBody, TableRow, TableCell, TableHeaderCell } from './Table';
+export { AnimatedLogoPreloader } from './AnimatedLogoPreloader';
