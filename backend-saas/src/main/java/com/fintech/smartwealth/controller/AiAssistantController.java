@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/api/v1/ai")
 @RequiredArgsConstructor
@@ -30,14 +32,14 @@ public class AiAssistantController {
     @PostMapping("/voice-to-transaction")
     public TransactionResponse voiceToTransaction(@Valid @RequestBody VoiceTransactionRequest request) {
         AiAssistantService.ExtractedTransaction extracted = aiAssistantService.extractTransactionData(request.text());
-        Category category = categoryRepository.findAvailableExpenseByUserIdAndName(
-                        securityUtils.getCurrentUserId(), extracted.category())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
-                        "Không tìm thấy danh mục chi tiêu: " + extracted.category()));
+        UUID userId = securityUtils.getCurrentUserId();
+        Category category = categoryRepository.findAvailableById(request.categoryId(), userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                "Không tìm thấy danh mục đã chọn. Vui lòng chọn một danh mục hợp lệ."));
 
         CreateTransactionRequest transaction = new CreateTransactionRequest();
         transaction.setAmount(extracted.amount());
-        transaction.setDescription(extracted.note().isBlank() ? request.text().trim() : extracted.note());
+        transaction.setDescription(extracted.note().isBlank() ? "Chi tiêu " + category.getName() : extracted.note());
         transaction.setTransactionDate(request.transactionDate());
         transaction.setWalletId(request.walletId());
         transaction.setCategoryId(category.getId());

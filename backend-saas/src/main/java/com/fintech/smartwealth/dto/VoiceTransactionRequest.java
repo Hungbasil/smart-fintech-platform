@@ -10,5 +10,6 @@ import java.util.UUID;
 public record VoiceTransactionRequest(
         @NotBlank @Size(max = 500) String text,
         @NotNull UUID walletId,
+        @NotNull UUID categoryId,
         @NotNull LocalDateTime transactionDate) {
 }

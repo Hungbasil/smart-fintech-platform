@@ -19,10 +19,11 @@ public class AiAssistantService {
 
     public ExtractedTransaction extractTransactionData(String text) {
         String prompt = "Bạn là một máy trích xuất dữ liệu. Hãy đọc câu sau và trả về ĐÚNG 1 chuỗi JSON, không giải thích gì thêm. "
-                + "Định dạng: {\"amount\": số_tiền, \"category\": \"Tên_danh_mục\", \"note\": \"Ghi chú ngắn\"}. "
-            + "Chỉ xử lý câu mô tả một khoản chi tiêu. Nếu câu không liên quan đến giao dịch hoặc không đủ thông tin, "
+                + "Định dạng: {\"amount\": số_tiền, \"category\": \"Tên_danh_mục\", \"note\": \"Ghi chú tối đa 60 ký tự\"}. "
+                + "Chỉ xử lý câu mô tả một khoản thu nhập hoặc chi tiêu. Nếu câu không liên quan đến giao dịch hoặc không đủ thông tin, "
                 + "hãy trả về {\"amount\": 0, \"category\": \"\", \"note\": \"\"}. "
                 + "Quy đổi đúng các đơn vị tiếng Việt như nghìn, ngàn, triệu; nếu số tiền hoặc danh mục còn mơ hồ thì từ chối. "
+                + "Ghi chú chỉ giữ nội dung chính như món hàng hoặc mục đích, không lặp lại cả câu nói, số tiền hoặc thời gian. "
                 + "Câu cần xử lý: " + text.trim();
         try {
             JsonNode response = ollamaWebClient.post()
@@ -47,7 +48,7 @@ public class AiAssistantService {
                 throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
                         "Số tiền nhận diện được không hợp lệ.");
             }
-            return new ExtractedTransaction(amount, category, note);
+            return new ExtractedTransaction(amount, category, note.length() > 60 ? note.substring(0, 60).trim() : note);
         } catch (ResponseStatusException exception) {
             throw exception;
         } catch (Exception exception) {
