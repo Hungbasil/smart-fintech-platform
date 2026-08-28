@@ -25,4 +25,7 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
 
 	@Query("SELECT c FROM Category c WHERE c.user.id = :userId AND c.name = :name")
 	Optional<Category> findByUserIdAndName(@Param("userId") UUID userId, @Param("name") String name);
+
+	@Query("SELECT c FROM Category c WHERE (c.user.id = :userId OR c.user IS NULL) AND LOWER(c.name) = LOWER(:name) AND UPPER(c.type) = 'EXPENSE'")
+	Optional<Category> findAvailableExpenseByUserIdAndName(@Param("userId") UUID userId, @Param("name") String name);
 }
