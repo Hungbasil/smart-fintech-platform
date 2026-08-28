@@ -134,6 +134,49 @@ class TransactionServiceTest {
     }
 
     @Test
+    void createAnomalousExpenseShouldSendNotificationAfterSaving() {
+        UUID userId = UUID.randomUUID();
+        Wallet wallet = wallet(userId, "1000000.00");
+        Category category = new Category();
+        category.setId(UUID.randomUUID());
+        category.setName("Dining");
+        category.setType("EXPENSE");
+        category.setUser(wallet.getUser());
+
+        java.time.LocalDateTime transactionDate = java.time.LocalDateTime.now();
+        CreateTransactionRequest request = new CreateTransactionRequest();
+        request.setAmount(new BigDecimal("600000.00"));
+        request.setDescription("Large dinner");
+        request.setTransactionDate(transactionDate);
+        request.setWalletId(wallet.getId());
+        request.setCategoryId(category.getId());
+
+        Transaction firstExpense = new Transaction();
+        firstExpense.setAmount(new BigDecimal("150000.00"));
+        Transaction secondExpense = new Transaction();
+        secondExpense.setAmount(new BigDecimal("200000.00"));
+
+        when(walletRepository.findById(wallet.getId())).thenReturn(Optional.of(wallet));
+        when(categoryRepository.findById(category.getId())).thenReturn(Optional.of(category));
+        when(securityUtils.isAdmin()).thenReturn(false);
+        when(securityUtils.getCurrentUserId()).thenReturn(userId);
+        when(transactionRepository.findExpenseHistoryByUserAndCategoryBetween(
+                org.mockito.ArgumentMatchers.eq(userId),
+                org.mockito.ArgumentMatchers.eq(category.getId()),
+                any(java.time.LocalDateTime.class),
+                org.mockito.ArgumentMatchers.eq(transactionDate)))
+                .thenReturn(List.of(firstExpense, secondExpense));
+        when(walletRepository.save(any(Wallet.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        transactionService.create(request);
+
+        verify(transactionRepository).save(any(Transaction.class));
+        verify(notificationService).sendNotification(userId,
+                "Cảnh báo: Bạn vừa chi một khoản Dining cao bất thường so với thói quen 3 tháng qua!");
+    }
+
+    @Test
     void createSplitExpenseShouldCreateOneLendDebtPerPerson() {
         UUID userId = UUID.randomUUID();
         Wallet wallet = wallet(userId, "100.00");

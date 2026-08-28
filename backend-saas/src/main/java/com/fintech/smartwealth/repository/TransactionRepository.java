@@ -128,6 +128,21 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
                                                                                                                                                                                                          @Param("fromDate") LocalDateTime fromDate,
                                                                                                                                                                                                          @Param("toDate") LocalDateTime toDate);
 
+                @Query("""
+                                                SELECT t
+                                                FROM Transaction t
+                                                WHERE t.wallet.user.id = :userId
+                                                        AND t.category.id = :categoryId
+                                                        AND UPPER(t.category.type) = 'EXPENSE'
+                                                        AND t.transactionType <> 'TRANSFER'
+                                                        AND t.transactionDate >= :fromDate
+                                                        AND t.transactionDate < :toDate
+                                                """)
+                List<Transaction> findExpenseHistoryByUserAndCategoryBetween(@Param("userId") UUID userId,
+                                                                                                                                                                                                                                                                        @Param("categoryId") UUID categoryId,
+                                                                                                                                                                                                                                                                        @Param("fromDate") LocalDateTime fromDate,
+                                                                                                                                                                                                                                                                        @Param("toDate") LocalDateTime toDate);
+
     @Query("""
             SELECT t
             FROM Transaction t

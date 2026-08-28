@@ -114,7 +114,34 @@ public class TransactionService {
         Transaction savedTransaction = transactionRepository.save(transaction);
         createSplitDebts(request, category, savedTransaction.getAmount());
         notifyIfBudgetExceeded(wallet, category, savedTransaction.getTransactionDate());
+        notifyIfAnomalousExpense(wallet, category, savedTransaction.getAmount(), savedTransaction.getTransactionDate());
         return toResponse(savedTransaction);
+    }
+
+    private void notifyIfAnomalousExpense(Wallet wallet,
+                                          Category category,
+                                          BigDecimal amount,
+                                          LocalDateTime transactionDate) {
+        if (!"EXPENSE".equalsIgnoreCase(category.getType()) || amount.compareTo(new BigDecimal("500000")) <= 0) {
+            return;
+        }
+
+        LocalDateTime fromDate = transactionDate.minusMonths(3);
+        List<Transaction> history = transactionRepository.findExpenseHistoryByUserAndCategoryBetween(
+                wallet.getUser().getId(), category.getId(), fromDate, transactionDate);
+        if (history.isEmpty()) {
+            return;
+        }
+
+        BigDecimal total = history.stream()
+                .map(Transaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal average = total.divide(BigDecimal.valueOf(history.size()), 2, java.math.RoundingMode.HALF_UP);
+        if (amount.compareTo(average.multiply(BigDecimal.valueOf(3))) > 0) {
+            notificationService.sendNotification(wallet.getUser().getId(),
+                    "Cảnh báo: Bạn vừa chi một khoản " + category.getName()
+                            + " cao bất thường so với thói quen 3 tháng qua!");
+        }
     }
 
     private void notifyIfBudgetExceeded(Wallet wallet, Category category, LocalDateTime transactionDate) {
