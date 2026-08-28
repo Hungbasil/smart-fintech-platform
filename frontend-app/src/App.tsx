@@ -17,6 +17,7 @@ import { Investments } from './pages/Investments';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import OAuth2Redirect from './pages/OAuth2Redirect';
+import DebtCalendar from './pages/DebtCalendar';
 
 function AppRouter() {
   return (
@@ -35,6 +36,7 @@ function AppRouter() {
           <Route path="/recurring" element={<ProtectedRoute><Recurring /></ProtectedRoute>} />
           <Route path="/saving-goals" element={<ProtectedRoute><SavingGoals /></ProtectedRoute>} />
           <Route path="/debts" element={<ProtectedRoute><Debts /></ProtectedRoute>} />
+          <Route path="/debts/calendar" element={<ProtectedRoute><DebtCalendar /></ProtectedRoute>} />
           <Route path="/investments" element={<ProtectedRoute><Investments /></ProtectedRoute>} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />

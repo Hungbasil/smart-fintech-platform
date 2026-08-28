@@ -13,7 +13,6 @@ const navigation = [
   { label: 'Budgets', to: '/budgets', icon: Target },
   { label: 'Recurring', to: '/recurring', icon: CalendarClock },
   { label: 'Saving goals', to: '/saving-goals', icon: Goal },
-  { label: 'Debts & loans', to: '/debts', icon: HandCoins },
 ];
 
 export const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
@@ -22,6 +21,7 @@ export const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) =
   const [overviewOpen, setOverviewOpen] = useState(location.pathname === '/' || location.pathname.startsWith('/overview') || location.pathname.startsWith('/investments'));
   const [profileOpen, setProfileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [debtsOpen, setDebtsOpen] = useState(location.pathname.startsWith('/debts'));
 
   useEffect(() => {
     const token = auth.getToken();
@@ -58,6 +58,8 @@ export const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) =
           {overviewOpen && <div className="sidebar-submenu ml-7 flex flex-col gap-1 border-l border-[#dce9e5] pl-3"><NavLink to="/overview" className={({ isActive }) => `rounded-lg px-3 py-2 text-[12px] font-semibold no-underline ${isActive ? 'text-[#075c57]' : 'text-[#71808c] hover:text-[#17212b]'}`}>Overview</NavLink><NavLink to="/investments" className={({ isActive }) => `flex items-center gap-2 rounded-lg px-3 py-2 text-[12px] font-semibold no-underline ${isActive ? 'text-[#075c57]' : 'text-[#71808c] hover:text-[#17212b]'}`}><Bitcoin size={14} />Investments</NavLink></div>}
           <button onClick={() => { setAnalyticsOpen((open) => !open); setOverviewOpen(false); }} className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold transition-colors ${location.pathname.startsWith('/analytics') ? 'bg-[#e4f4f0] text-[#075c57]' : 'text-[#71808c] hover:bg-[#f1f6f4] hover:text-[#17212b]'}`}><BarChart3 size={17} strokeWidth={location.pathname.startsWith('/analytics') ? 2.5 : 2} /><span className="sidebar-text">Analytics</span><ChevronRight size={15} className={`sidebar-chevron ml-auto transition-transform ${analyticsOpen ? 'rotate-90' : ''}`} /></button>
           {analyticsOpen && <div className="sidebar-submenu ml-7 flex flex-col gap-1 border-l border-[#dce9e5] pl-3"><NavLink to="/analytics/overview" className={({ isActive }) => `rounded-lg px-3 py-2 text-[12px] font-semibold no-underline ${isActive ? 'text-[#075c57]' : 'text-[#71808c] hover:text-[#17212b]'}`}>Overview</NavLink><NavLink to="/analytics/predictive" className={({ isActive }) => `rounded-lg px-3 py-2 text-[12px] font-semibold no-underline ${isActive ? 'text-[#075c57]' : 'text-[#71808c] hover:text-[#17212b]'}`}>Forecast</NavLink></div>}
+          <button onClick={() => setDebtsOpen((open) => !open)} className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold transition-colors ${debtsOpen ? 'bg-[#e4f4f0] text-[#075c57]' : 'text-[#71808c] hover:bg-[#f1f6f4] hover:text-[#17212b]'}`}><HandCoins size={17} strokeWidth={debtsOpen ? 2.5 : 2} /><span className="sidebar-text">Debts & loans</span><ChevronRight size={15} className={`sidebar-chevron ml-auto transition-transform ${debtsOpen ? 'rotate-90' : ''}`} /></button>
+          {debtsOpen && <div className="sidebar-submenu ml-7 flex flex-col gap-1 border-l border-[#dce9e5] pl-3"><NavLink to="/debts" end className={({ isActive }) => `rounded-lg px-3 py-2 text-[12px] font-semibold no-underline ${isActive ? 'text-[#075c57]' : 'text-[#71808c] hover:text-[#17212b]'}`}>Danh sách</NavLink><NavLink to="/debts/calendar" className={({ isActive }) => `rounded-lg px-3 py-2 text-[12px] font-semibold no-underline ${isActive ? 'text-[#075c57]' : 'text-[#71808c] hover:text-[#17212b]'}`}>Lịch nhắc nợ</NavLink></div>}
           {navigation.map(({ label, to, icon: Icon }) => (
             <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-semibold no-underline transition-colors ${isActive ? 'bg-[#e4f4f0] text-[#075c57]' : 'text-[#71808c] hover:bg-[#f1f6f4] hover:text-[#17212b]'}`}>
               {({ isActive }) => <><Icon size={17} strokeWidth={isActive ? 2.5 : 2} /><span className="sidebar-text">{label}</span></>}
@@ -88,6 +90,8 @@ export const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) =
             {navigation.map(({ label, to, icon: Icon }) => (
               <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => `flex w-[72px] shrink-0 flex-col items-center gap-1 rounded-lg px-1 py-1 text-[10px] font-bold no-underline ${isActive ? 'text-[#087f74]' : 'text-[#9aa7af]'}`}><Icon size={18} />{label}</NavLink>
             ))}
+            <button type="button" onClick={() => setDebtsOpen((open) => !open)} className={`flex w-[72px] shrink-0 flex-col items-center gap-1 rounded-lg px-1 py-1 text-[10px] font-bold ${location.pathname.startsWith('/debts') ? 'text-[#087f74]' : 'text-[#9aa7af]'}`}><HandCoins size={18} />Debts</button>
+            {debtsOpen && <div className="absolute bottom-full right-2 mb-2 w-44 rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] p-2 shadow-lg"><NavLink onClick={() => setDebtsOpen(false)} to="/debts" end className="block rounded-lg px-3 py-2.5 text-xs font-bold text-[#71808c]">Danh sách</NavLink><NavLink onClick={() => setDebtsOpen(false)} to="/debts/calendar" className="block rounded-lg px-3 py-2.5 text-xs font-bold text-[#71808c]">Lịch nhắc nợ</NavLink></div>}
           </nav>
         </div>
       </div>

@@ -10,6 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fullcalendar/core": "^6.1.21",
+    "@fullcalendar/daygrid": "^6.1.21",
+    "@fullcalendar/react": "^7.0.2",
     "@tremor/react": "^2.3.0",
     "axios": "^1.18.1",
     "lucide-react": "^1.21.0",

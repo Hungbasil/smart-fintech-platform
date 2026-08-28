@@ -117,6 +117,11 @@ export const updateDebt = (id: string, request: DebtRequest) => api.put<Debt>(`/
 export const deleteDebt = (id: string) => api.delete(`/debts/${id}`);
 export const settleDebt = (id: string, walletId: string) => api.post<Debt>(`/debts/${id}/settle`, { walletId });
 
+export interface Wallet { id: string; name: string; balance: number; }
+export interface CalendarEvent { id: string; title: string; date: string; amount: number; type: 'DEBT_PAYABLE' | 'DEBT_RECEIVABLE' | 'SUBSCRIPTION'; }
+export const getWallets = () => api.get<Wallet[]>('/wallets');
+export const getDebtCalendar = () => api.get<CalendarEvent[]>('/calendar/debts');
+
 export interface AnalyticsQuery {
   walletId?: string;
   fromDate?: string;
