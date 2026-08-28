@@ -45,6 +45,15 @@ export const scanReceipt = (file: File) => {
   });
 };
 
+export interface VoiceTransactionRequest {
+  text: string;
+  walletId: string;
+  transactionDate: string;
+}
+
+export const createVoiceTransaction = (request: VoiceTransactionRequest) =>
+  api.post('/ai/voice-to-transaction', request);
+
 export interface BudgetRequest {
   categoryId: string;
   amount: number;

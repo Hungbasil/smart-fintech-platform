@@ -4,6 +4,8 @@ import {
   Camera,
   Download,
   FileUp,
+  LoaderCircle,
+  Mic,
   Pencil,
   Plus,
   Search,
@@ -23,7 +25,7 @@ import {
   CardBody,
 } from "../components";
 import api from "../services/api";
-import { scanReceipt, transferFunds } from "../services/api";
+import { createVoiceTransaction, scanReceipt, transferFunds } from "../services/api";
 import { formatSignedAmount } from "../services/format";
 import { getApiErrorMessage, toast } from "../services/notifications";
 
@@ -55,6 +57,19 @@ interface CategoryOption {
   type: string;
 }
 
+type SpeechRecognitionInstance = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
+
 export const Transactions: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,6 +88,9 @@ export const Transactions: React.FC = () => {
   >(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isVoiceAnalyzing, setIsVoiceAnalyzing] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
@@ -100,6 +118,7 @@ export const Transactions: React.FC = () => {
   });
   const importInputRef = useRef<HTMLInputElement>(null);
   const ocrInputRef = useRef<HTMLInputElement>(null);
+  const speechRecognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const pageSize = 10;
 
   useEffect(() => {
@@ -228,8 +247,75 @@ export const Transactions: React.FC = () => {
     setIsSplit(false);
     setSplitWithNames([]);
     setSplitNameInput("");
+    setVoiceTranscript("");
+    setIsListening(false);
+    setIsVoiceAnalyzing(false);
     setIsCreateOpen(true);
   };
+
+  const startVoiceTransaction = () => {
+    const speechWindow = window as Window & {
+      SpeechRecognition?: SpeechRecognitionConstructor;
+      webkitSpeechRecognition?: SpeechRecognitionConstructor;
+    };
+    const Recognition = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
+    if (!Recognition) {
+      const message = "Trình duyệt này không hỗ trợ nhập giao dịch bằng giọng nói.";
+      setFormError(message);
+      toast.error(message);
+      return;
+    }
+    if (!form.walletId) {
+      const message = "Vui lòng chọn ví trước khi nhập bằng giọng nói.";
+      setFormError(message);
+      toast.error(message);
+      return;
+    }
+
+    const recognition = new Recognition();
+    speechRecognitionRef.current = recognition;
+    recognition.lang = "vi-VN";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map((result) => result[0]?.transcript || "")
+        .join(" ")
+        .trim();
+      if (!transcript) return;
+      setVoiceTranscript(transcript);
+      setIsListening(false);
+      setIsVoiceAnalyzing(true);
+      createVoiceTransaction({
+        text: transcript,
+        walletId: form.walletId,
+        transactionDate: form.transactionDate,
+      })
+        .then(() => {
+          setIsCreateOpen(false);
+          setReloadToken((value) => value + 1);
+          toast.success("Đã thêm giao dịch bằng giọng nói");
+        })
+        .catch((err: unknown) => {
+          const message = getApiErrorMessage(err, "Không thể tạo giao dịch bằng giọng nói");
+          setFormError(message);
+          toast.error(message);
+        })
+        .finally(() => setIsVoiceAnalyzing(false));
+    };
+    recognition.onerror = () => {
+      setIsListening(false);
+      setFormError("Không nghe rõ giọng nói. Vui lòng thử lại.");
+      toast.error("Không nghe rõ giọng nói. Vui lòng thử lại.");
+    };
+    recognition.onend = () => setIsListening(false);
+    setFormError(null);
+    setVoiceTranscript("");
+    setIsListening(true);
+    recognition.start();
+  };
+
+  useEffect(() => () => speechRecognitionRef.current?.stop(), []);
 
   const addSplitName = () => {
     const name = splitNameInput.trim();
@@ -758,15 +844,30 @@ export const Transactions: React.FC = () => {
                 <label className="mb-1.5 block text-xs font-bold text-[#71808c]">
                   Description
                 </label>
-                <input
-                  required
-                  value={form.description}
-                  onChange={(event) =>
-                    setForm({ ...form, description: event.target.value })
-                  }
-                  placeholder="e.g. Monthly salary"
-                  className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74] focus:ring-2 focus:ring-[#e4f4f0]"
-                />
+                <div className="flex gap-2">
+                  <input
+                    required
+                    value={form.description}
+                    onChange={(event) =>
+                      setForm({ ...form, description: event.target.value })
+                    }
+                    placeholder="e.g. Monthly salary"
+                    className="min-w-0 flex-1 rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74] focus:ring-2 focus:ring-[#e4f4f0]"
+                  />
+                  {!editingTransactionId && <button
+                    type="button"
+                    onClick={startVoiceTransaction}
+                    disabled={isListening || isVoiceAnalyzing || isSaving}
+                    aria-label="Add transaction by voice"
+                    title="Add transaction by voice"
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-sm transition ${isListening ? "animate-pulse bg-[#d76756]" : "bg-[#bd7a22] hover:bg-[#9b6217]"} disabled:cursor-not-allowed disabled:opacity-50`}
+                  >
+                    {isVoiceAnalyzing ? <LoaderCircle size={18} className="animate-spin" /> : <Mic size={18} />}
+                  </button>}
+                </div>
+                {isListening && <p className="mt-2 text-xs font-bold text-[#bd7a22]">Đang lắng nghe... Hãy nói khoản chi của bạn.</p>}
+                {voiceTranscript && <div className="mt-2 rounded-xl border border-[#f0d9aa] bg-[#fff9eb] px-3 py-2 text-xs text-[#765313]"><span className="font-extrabold">Bạn đã nói:</span> {voiceTranscript}</div>}
+                {isVoiceAnalyzing && <p className="mt-2 text-xs font-bold text-[#087f74]">AI đang phân tích...</p>}
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
