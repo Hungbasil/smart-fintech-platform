@@ -70,6 +70,30 @@ type SpeechRecognitionInstance = {
 
 type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
 
+const localDateTimeValue = () => {
+  const now = new Date();
+  const offset = now.getTimezoneOffset();
+  return new Date(now.getTime() - offset * 60 * 1000).toISOString().slice(0, 16);
+};
+
+const dateTimeWithSpokenTime = (transcript: string, fallback: string) => {
+  const date = new Date(`${fallback.slice(0, 10)}T00:00:00`);
+  if (/hôm qua|ngày hôm qua/i.test(transcript)) date.setDate(date.getDate() - 1);
+  if (/ngày mai|mai/i.test(transcript)) date.setDate(date.getDate() + 1);
+  const dateValue = [date.getFullYear(), date.getMonth() + 1, date.getDate()]
+    .map((value, index) => index === 0 ? String(value) : String(value).padStart(2, "0"))
+    .join("-");
+  const match = transcript.match(/(?:lúc|vào lúc|khoảng)\s*(\d{1,2})(?::(\d{2}))?\s*(?:giờ|h)\s*(sáng|trưa|chiều|tối)?|\b(\d{1,2})(?::(\d{2}))?\s*(?:giờ|h)\s*(sáng|trưa|chiều|tối)?/i);
+  if (!match) return `${dateValue}T${fallback.slice(11, 16)}`;
+  let hour = Number(match[1] || match[4]);
+  const minute = Number(match[2] || match[5] || 0);
+  const period = (match[3] || match[6])?.toLowerCase();
+  if (hour > 23 || minute > 59) return fallback;
+  if ((period === "chiều" || period === "tối") && hour < 12) hour += 12;
+  if (period === "sáng" && hour === 12) hour = 0;
+  return `${dateValue}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+};
+
 export const Transactions: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -102,7 +126,7 @@ export const Transactions: React.FC = () => {
   const [form, setForm] = useState({
     description: "",
     amount: "",
-    transactionDate: new Date().toISOString().slice(0, 16),
+    transactionDate: localDateTimeValue(),
     walletId: "",
     categoryId: "",
   });
@@ -114,7 +138,7 @@ export const Transactions: React.FC = () => {
     toWalletId: "",
     amount: "",
     description: "",
-    transactionDate: new Date().toISOString().slice(0, 16),
+    transactionDate: localDateTimeValue(),
   });
   const importInputRef = useRef<HTMLInputElement>(null);
   const ocrInputRef = useRef<HTMLInputElement>(null);
@@ -214,7 +238,7 @@ export const Transactions: React.FC = () => {
       setForm({
         description: "",
         amount: "",
-        transactionDate: new Date().toISOString().slice(0, 16),
+        transactionDate: localDateTimeValue(),
         walletId: "",
         categoryId: "",
       });
@@ -240,7 +264,7 @@ export const Transactions: React.FC = () => {
     setForm({
       description: "",
       amount: "",
-      transactionDate: new Date().toISOString().slice(0, 16),
+      transactionDate: localDateTimeValue(),
       walletId: "",
       categoryId: "",
     });
@@ -271,6 +295,12 @@ export const Transactions: React.FC = () => {
       toast.error(message);
       return;
     }
+    if (!form.categoryId) {
+      const message = "Vui lòng chọn danh mục trước khi nhập bằng giọng nói.";
+      setFormError(message);
+      toast.error(message);
+      return;
+    }
 
     const recognition = new Recognition();
     speechRecognitionRef.current = recognition;
@@ -289,7 +319,8 @@ export const Transactions: React.FC = () => {
       createVoiceTransaction({
         text: transcript,
         walletId: form.walletId,
-        transactionDate: form.transactionDate,
+        categoryId: form.categoryId,
+        transactionDate: dateTimeWithSpokenTime(transcript, form.transactionDate),
       })
         .then(() => {
           setIsCreateOpen(false);
@@ -356,7 +387,7 @@ export const Transactions: React.FC = () => {
       toWalletId: "",
       amount: "",
       description: "",
-      transactionDate: new Date().toISOString().slice(0, 16),
+      transactionDate: localDateTimeValue(),
     });
     setIsTransferOpen(true);
   };
@@ -516,7 +547,7 @@ export const Transactions: React.FC = () => {
           amount: Math.abs(Number(values[indexes.amount])),
           description: values[indexes.description] || "Imported transaction",
           transactionDate:
-            values[indexes.date] || new Date().toISOString().slice(0, 16),
+            values[indexes.date] || localDateTimeValue(),
           walletId: values[indexes.walletId],
           categoryId: values[indexes.categoryId],
         });
@@ -867,7 +898,7 @@ export const Transactions: React.FC = () => {
                 </div>
                 {isListening && <p className="mt-2 text-xs font-bold text-[#bd7a22]">Đang lắng nghe... Hãy nói khoản chi của bạn.</p>}
                 {voiceTranscript && <div className="mt-2 rounded-xl border border-[#f0d9aa] bg-[#fff9eb] px-3 py-2 text-xs text-[#765313]"><span className="font-extrabold">Bạn đã nói:</span> {voiceTranscript}</div>}
-                {isVoiceAnalyzing && <p className="mt-2 text-xs font-bold text-[#087f74]">AI đang phân tích...</p>}
+                {isVoiceAnalyzing && <p className="mt-2 text-xs font-bold text-[#087f74]">AI đang phân tích... Giao dịch sẽ dùng danh mục đã chọn.</p>}
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>

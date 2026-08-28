@@ -48,6 +48,7 @@ export const scanReceipt = (file: File) => {
 export interface VoiceTransactionRequest {
   text: string;
   walletId: string;
+  categoryId: string;
   transactionDate: string;
 }
 
