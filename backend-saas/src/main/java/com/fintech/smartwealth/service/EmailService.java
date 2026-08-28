@@ -43,4 +43,19 @@ public class EmailService {
             throw new IllegalStateException("Unable to send OTP email", exception);
         }
     }
+
+    public void sendDebtReminderEmail(String toEmail, String message) {
+      if (from == null || from.isBlank()) return;
+      try {
+        var mail = mailSender.createMimeMessage();
+        var helper = new MimeMessageHelper(mail, true, "UTF-8");
+        helper.setTo(toEmail);
+        helper.setFrom(from, fromName);
+        helper.setSubject("SmartFin debt reminder");
+        helper.setText("<div style=\"font-family:Arial,sans-serif\"><h2>SmartFin reminder</h2><p>" + message + "</p></div>", true);
+        mailSender.send(mail);
+      } catch (Exception exception) {
+        throw new IllegalStateException("Unable to send debt reminder email", exception);
+      }
+    }
 }
