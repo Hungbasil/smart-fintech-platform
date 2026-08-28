@@ -16,6 +16,7 @@ import { Navigate } from 'react-router-dom';
 import { Investments } from './pages/Investments';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
+import OAuth2Redirect from './pages/OAuth2Redirect';
 
 function AppRouter() {
   return (
@@ -37,6 +38,7 @@ function AppRouter() {
           <Route path="/investments" element={<ProtectedRoute><Investments /></ProtectedRoute>} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/oauth2/redirect" element={<OAuth2Redirect />} />
         </Routes>
       </Layout>
     </BrowserRouter>

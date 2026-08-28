@@ -51,6 +51,10 @@ export function logout() {
   localStorage.removeItem(USER_KEY);
 }
 
+export function completeOAuthLogin(token: string) {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
@@ -69,4 +73,4 @@ export function getUser(): AuthUser | null {
   }
 }
 
-export default { login, register, logout, getToken, getUser, isAuthenticated };
+export default { login, register, logout, completeOAuthLogin, getToken, getUser, isAuthenticated };

@@ -3,6 +3,7 @@ import auth, { forgotPassword, resetPassword } from "../services/auth";
 import { OtpInput } from "../components/OtpInput";
 import { AuthShell } from "../components/AuthShell";
 import { getApiErrorMessage, toast } from "../services/notifications";
+import { GoogleLoginButton } from "../components/GoogleLoginButton";
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -132,6 +133,8 @@ export const Login: React.FC = () => {
               Forgot password?
             </button>
           </form>
+          <div className="my-5 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[.12em] text-[#9aa7af]"><span className="h-px flex-1 bg-[#e3ebe8]" />or<span className="h-px flex-1 bg-[#e3ebe8]" /></div>
+          <GoogleLoginButton />
           <p className="mt-6 text-center text-sm text-[#71808c]">
             New to SmartFin?{" "}
             <a
