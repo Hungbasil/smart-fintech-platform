@@ -51,6 +51,7 @@ public class JwtTokenProvider {
                 .setSubject(user.getEmail())
                 .claim("userId", user.getId().toString())
                 .claim("role", user.getRole().name())
+                .claim("fullName", user.getFullName())
                 .setIssuedAt(now)
                 .setExpiration(expiry)
                 .signWith(signingKey, SignatureAlgorithm.HS256)
