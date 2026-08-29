@@ -216,6 +216,117 @@ export interface AiChatRequest {
 
 export const askAi = (request: AiChatRequest) => api.post<string>('/ai/chat', request);
 
+// ==================== ADMIN ENDPOINTS ====================
+
+export interface UserDTO {
+  id: string;
+  email: string;
+  fullName: string;
+  role: string;
+  active: boolean;
+  createdAt: string | null;
+  lastLogin: string | null;
+}
+
+export interface AdminOverviewDTO {
+  totalUsers: number;
+  totalWallets: number;
+  totalTransactions: number;
+  totalBalance: number;
+  monthlySpent: number;
+  monthlyIncome: number;
+  newUsersThisMonth: number;
+  activeUsersToday: number;
+}
+
+export interface AdminTransactionAnalyticsDTO {
+  categorySpending: { [key: string]: number };
+  walletSpending: { [key: string]: number };
+  largestTransactions: Array<{
+    id: string;
+    amount: number;
+    description: string;
+    transactionDate: string;
+    walletId: string;
+    categoryId: string;
+    type: string;
+  }>;
+  dailyTransactionCount: { [key: string]: number };
+  totalTransactionCount: number;
+}
+
+export interface AdminUserAnalyticsDTO {
+  totalUsers: number;
+  activeUsersThisMonth: number;
+  newUsersThisMonth: number;
+  dailyUserRegistration: { [key: string]: number };
+  avgWalletsPerUser: number;
+  avgTransactionsPerUser: number;
+}
+
+export interface AdminFinancialHealthDTO {
+  totalBorrowed: number;
+  totalLent: number;
+  pendingDebtsCount: number;
+  activeRecurringTransactions: number;
+  activeSavingGoals: number;
+  savingGoalsProgress: number;
+  usersBalanceRange0To1M: number;
+  usersBalanceRange1MTo10M: number;
+  usersBalanceRangeAbove10M: number;
+}
+
+export interface RoleChangeRequest {
+  role: string;
+}
+
+// Admin User Management
+export const getAdminUsers = (page = 0, size = 10, search?: string) =>
+  api.get<{ content: UserDTO[]; totalElements: number; totalPages: number }>('/admin/users', {
+    params: { page, size, ...(search && { search }) },
+  });
+
+export const getAdminUserDetail = (id: string) => api.get<UserDTO>(`/admin/users/${id}`);
+
+export const lockAdminUser = (id: string) => api.post(`/admin/users/${id}/lock`, {});
+
+export const unlockAdminUser = (id: string) => api.post(`/admin/users/${id}/unlock`, {});
+
+export const changeAdminUserRole = (id: string, request: RoleChangeRequest) =>
+  api.post(`/admin/users/${id}/role`, request);
+
+// Admin Analytics
+export const getAdminOverview = () => api.get<AdminOverviewDTO>('/admin/analytics/overview');
+
+export interface AdminAnalyticsQuery {
+  from?: string;
+  to?: string;
+}
+
+export const getAdminTransactionAnalytics = (query?: AdminAnalyticsQuery) =>
+  api.get<AdminTransactionAnalyticsDTO>('/admin/analytics/transactions', { params: query });
+
+export const getAdminUserAnalytics = () => api.get<AdminUserAnalyticsDTO>('/admin/analytics/users');
+
+export const getAdminFinancialHealth = () => api.get<AdminFinancialHealthDTO>('/admin/analytics/financial-health');
+
+// Admin System Health
+export interface DatabaseHealthDTO {
+  status: string;
+  timestamp: string;
+}
+
+export interface SystemHealthDTO {
+  status: string;
+  timestamp: string;
+  databaseHealth: DatabaseHealthDTO;
+  uptime: number;
+  memoryUsage: number;
+  cpuUsage: number;
+}
+
+export const getSystemHealth = () => api.get<SystemHealthDTO>('/admin/health');
+
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('authToken');

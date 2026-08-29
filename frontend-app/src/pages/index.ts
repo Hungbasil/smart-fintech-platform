@@ -8,3 +8,4 @@ export { SavingGoals } from './SavingGoals';
 export { Debts } from './Debts';
 export { PredictiveAnalytics } from './PredictiveAnalytics';
 export { Investments } from './Investments';
+export { AdminDashboard } from './AdminDashboard';

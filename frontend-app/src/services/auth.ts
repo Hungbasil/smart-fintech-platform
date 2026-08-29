@@ -8,6 +8,7 @@ export interface AuthUser {
   id: string;
   fullName: string;
   email: string;
+  role?: string;
 }
 
 export interface LoginRequest {
@@ -24,6 +25,48 @@ export interface RegisterRequest {
 export interface OtpRequest { email: string; otp: string }
 export interface ResetPasswordRequest extends OtpRequest { newPassword: string }
 
+export function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.length % 4 === 0 ? normalized : normalized + '='.repeat(4 - (normalized.length % 4));
+    const decoded = atob(padded);
+    return JSON.parse(decodeURIComponent(
+      decoded.split('').map((character) => `%${(`00${character.charCodeAt(0).toString(16)}`).slice(-2)}`).join(''),
+    )) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+export function getUserRole(): string | null {
+  const token = getToken();
+  if (token) {
+    const payload = decodeJwtPayload(token);
+    const role = payload?.role ?? payload?.roles;
+    if (typeof role === 'string') {
+      return role.toUpperCase();
+    }
+    if (Array.isArray(role) && role.length > 0 && typeof role[0] === 'string') {
+      return role[0].toUpperCase();
+    }
+  }
+
+  const user = getUser();
+  const storedRole = user?.role;
+  if (storedRole) {
+    return storedRole.toUpperCase();
+  }
+
+  return null;
+}
+
+export function isAdmin(): boolean {
+  const role = getUserRole();
+  return role === 'ADMIN' || role === 'ROLE_ADMIN';
+}
+
 export async function login(payload: LoginRequest): Promise<AxiosResponse<any>> {
   const res = await api.post('/auth/login', payload);
   const token = res.data?.token || res.data?.accessToken || res.data?.access_token;
@@ -31,7 +74,12 @@ export async function login(payload: LoginRequest): Promise<AxiosResponse<any>> 
     localStorage.setItem(TOKEN_KEY, token);
   }
   if (res.data?.user) {
-    localStorage.setItem(USER_KEY, JSON.stringify(res.data.user));
+    const decodedRole = token ? decodeJwtPayload(token)?.role : null;
+    const user = {
+      ...res.data.user,
+      role: typeof decodedRole === 'string' ? decodedRole.toUpperCase() : res.data.user.role,
+    } as AuthUser;
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
   }
   return res;
 }
@@ -54,19 +102,19 @@ export function logout() {
 export function completeOAuthLogin(token: string) {
   localStorage.setItem(TOKEN_KEY, token);
 
-  const payload = token.split('.')[1];
-  const claims = JSON.parse(decodeURIComponent(
-    atob(payload.replace(/-/g, '+').replace(/_/g, '/'))
-      .split('')
-      .map((character) => `%${(`00${character.charCodeAt(0).toString(16)}`).slice(-2)}`)
-      .join(''),
-  )) as { userId?: string; fullName?: string; sub?: string };
+  const claims = decodeJwtPayload(token) as {
+    userId?: string;
+    fullName?: string;
+    sub?: string;
+    role?: string;
+  } | null;
 
-  if (claims.userId && claims.sub) {
+  if (claims?.userId && claims?.sub) {
     localStorage.setItem(USER_KEY, JSON.stringify({
       id: claims.userId,
       fullName: claims.fullName || claims.sub,
       email: claims.sub,
+      role: claims.role,
     }));
   }
 }
@@ -83,10 +131,12 @@ export function getUser(): AuthUser | null {
   const storedUser = localStorage.getItem(USER_KEY);
   if (!storedUser) return null;
   try {
-    return JSON.parse(storedUser) as AuthUser;
+    const user = JSON.parse(storedUser) as AuthUser;
+    const role = user.role || getUserRole();
+    return role ? { ...user, role } : user;
   } catch {
     return null;
   }
 }
 
-export default { login, register, logout, completeOAuthLogin, getToken, getUser, isAuthenticated };
+export default { login, register, logout, completeOAuthLogin, getToken, getUser, isAuthenticated, isAdmin, getUserRole };

@@ -756,7 +756,7 @@ export const Transactions: React.FC = () => {
                   <TableCell
                     className={`text-right font-extrabold ${transaction.type === "INCOME" ? "text-[#087f74]" : transaction.type === "EXPENSE" ? "text-[#d76756]" : "text-[#bd7a22]"}`}
                   >
-                    {formatSignedAmount(transaction.amount, transaction.type)}
+                    {formatSignedAmount(transaction.amount, transaction.type || "EXPENSE")}
                   </TableCell>
                   <TableCell>
                     <span className="rounded-lg bg-[#edf4f2] px-2 py-1 text-[11px] font-bold text-[#075c57]">

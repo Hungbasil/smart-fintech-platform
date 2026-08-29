@@ -4,7 +4,7 @@ import auth from '../services/auth';
 import AiChatWidget from './AiChatWidget';
 import { API_BASE_URL } from '../services/api';
 import { toast } from '../services/notifications';
-import { BarChart3, CalendarClock, ChevronDown, ChevronRight, Goal, HandCoins, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, ReceiptText, Tag, Target, WalletCards, Bitcoin } from 'lucide-react';
+import { BarChart3, CalendarClock, ChevronDown, ChevronRight, Goal, HandCoins, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, ReceiptText, ShieldCheck, Tag, Target, WalletCards, Bitcoin } from 'lucide-react';
 
 const navigation = [
   { label: 'Transactions', to: '/transactions', icon: ReceiptText },
@@ -39,6 +39,7 @@ export const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) =
   }
 
   const user = auth.getUser();
+  const isAdmin = auth.isAdmin();
   const displayName = user?.fullName || user?.email || 'Account';
   const initials = displayName.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase();
 
@@ -65,6 +66,11 @@ export const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) =
               {({ isActive }) => <><Icon size={17} strokeWidth={isActive ? 2.5 : 2} /><span className="sidebar-text">{label}</span></>}
             </NavLink>
           ))}
+          {isAdmin && (
+            <NavLink to="/admin" className={({ isActive }) => `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-semibold no-underline transition-colors ${isActive ? 'bg-[#e4f4f0] text-[#075c57]' : 'text-[#71808c] hover:bg-[#f1f6f4] hover:text-[#17212b]'}`}>
+              {({ isActive }) => <><ShieldCheck size={17} strokeWidth={isActive ? 2.5 : 2} /><span className="sidebar-text">Admin</span></>}
+            </NavLink>
+          )}
         </nav>
         <div className="mt-auto border-t border-[#e3ebe8] pt-5">
           <button onClick={() => { auth.logout(); window.location.href = '/login'; }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold text-[#71808c] transition-colors hover:bg-[#fff1ef] hover:text-[#d76756]"><LogOut size={17} /><span className="sidebar-text">Sign out</span></button>
@@ -91,6 +97,9 @@ export const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) =
             {navigation.map(({ label, to, icon: Icon }) => (
               <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => `flex w-[72px] shrink-0 flex-col items-center gap-1 rounded-lg px-1 py-1 text-[10px] font-bold no-underline ${isActive ? 'text-[#087f74]' : 'text-[#9aa7af]'}`}><Icon size={18} />{label}</NavLink>
             ))}
+            {isAdmin && (
+              <NavLink to="/admin" className={({ isActive }) => `flex w-[72px] shrink-0 flex-col items-center gap-1 rounded-lg px-1 py-1 text-[10px] font-bold no-underline ${isActive ? 'text-[#087f74]' : 'text-[#9aa7af]'}`}><ShieldCheck size={18} />Admin</NavLink>
+            )}
           </nav>
         </div>
       </div>

@@ -4,12 +4,18 @@ import auth from '../services/auth';
 
 interface Props {
   children: JSX.Element;
+  requireAdmin?: boolean;
 }
 
-export const ProtectedRoute: React.FC<Props> = ({ children }) => {
+export const ProtectedRoute: React.FC<Props> = ({ children, requireAdmin = false }) => {
   if (!auth.isAuthenticated()) {
     return <Navigate to="/login" replace />;
   }
+
+  if (requireAdmin && !auth.isAdmin()) {
+    return <Navigate to="/overview" replace />;
+  }
+
   return children;
 };
 

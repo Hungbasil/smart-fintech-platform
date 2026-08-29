@@ -20,6 +20,7 @@ interface Transaction {
   description: string;
   transactionDate: string;
   walletId: string;
+  type?: string;
 }
 
 interface DashboardData {
@@ -112,7 +113,21 @@ export const Dashboard: React.FC = () => {
         </UiCard>
         <UiCard>
           <CardHeader><div><h3 className="section-title">Recent transactions</h3><p className="section-caption mt-1">Your latest financial activity</p></div></CardHeader>
-          <CardBody><div className="divide-y divide-[#edf2f0]">{transactions.slice(0, 5).map((transaction) => <div key={transaction.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"><div className="min-w-0"><p className="truncate text-[13px] font-bold text-[#17212b]">{transaction.description || 'Untitled transaction'}</p><p className="mt-0.5 text-[11px] text-[#9aa7af]">{new Date(transaction.transactionDate).toLocaleDateString()}</p></div><span className="shrink-0 text-[13px] font-extrabold text-[#71808c]">{currency.format(Math.abs(transaction.amount))}</span></div>)}{transactions.length === 0 && <div className="py-10 text-center text-sm text-[#9aa7af]">No transactions yet.</div>}</div></CardBody>
+          <CardBody><div className="divide-y divide-[#edf2f0]">{transactions.slice(0, 5).map((transaction) => {
+            const normalizedType = (transaction.type || 'EXPENSE').toUpperCase();
+            const isIncome = normalizedType === 'INCOME';
+            return (
+              <div key={transaction.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                <div className="min-w-0">
+                  <p className="truncate text-[13px] font-bold text-[#17212b]">{transaction.description || 'Untitled transaction'}</p>
+                  <p className="mt-0.5 text-[11px] text-[#9aa7af]">{new Date(transaction.transactionDate).toLocaleDateString()}</p>
+                </div>
+                <span className={`shrink-0 text-[13px] font-extrabold ${isIncome ? 'text-[#087f74]' : 'text-[#d76756]'}`}>
+                  {isIncome ? '+' : '-'}{currency.format(Math.abs(transaction.amount))}
+                </span>
+              </div>
+            );
+          })}{transactions.length === 0 && <div className="py-10 text-center text-sm text-[#9aa7af]">No transactions yet.</div>}</div></CardBody>
         </UiCard>
       </div>
     </div>

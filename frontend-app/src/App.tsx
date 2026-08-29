@@ -14,6 +14,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import { Navigate } from 'react-router-dom';
 import { Investments } from './pages/Investments';
+import { AdminDashboard } from './pages/AdminDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import OAuth2Redirect from './pages/OAuth2Redirect';
@@ -38,6 +39,7 @@ function AppRouter() {
           <Route path="/debts" element={<ProtectedRoute><Debts /></ProtectedRoute>} />
           <Route path="/debts/calendar" element={<ProtectedRoute><DebtCalendar /></ProtectedRoute>} />
           <Route path="/investments" element={<ProtectedRoute><Investments /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminDashboard /></ProtectedRoute>} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/oauth2/redirect" element={<OAuth2Redirect />} />
