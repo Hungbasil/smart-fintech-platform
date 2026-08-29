@@ -13,4 +13,5 @@ public interface RecurringTransactionRepository extends JpaRepository<RecurringT
     List<RecurringTransaction> findByUserId(UUID userId);
     Optional<RecurringTransaction> findByIdAndUserId(UUID id, UUID userId);
     List<RecurringTransaction> findByActiveTrue();
+    long countByActive(boolean active);
 }

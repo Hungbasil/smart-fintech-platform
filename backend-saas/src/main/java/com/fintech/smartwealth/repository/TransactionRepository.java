@@ -223,4 +223,19 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
                 java.util.List<HistoricalExpenseProjection> getHistoricalExpenses(@Param("userId") UUID userId,
                                                                                                                                                                                                                                                                                                 @Param("fromDate") LocalDateTime fromDate,
                                                                                                                                                                                                                                                                                                 @Param("toDate") LocalDateTime toDate);
+
+    // Admin analytics queries
+    List<Transaction> findByTransactionDateBetween(LocalDateTime from, LocalDateTime to);
+
+    @Query("""
+            SELECT COALESCE(SUM(t.amount), 0)
+            FROM Transaction t
+            JOIN t.category c
+            WHERE UPPER(c.type) = UPPER(:type)
+              AND t.transactionDate >= :from
+              AND t.transactionDate < :to
+            """)
+    BigDecimal sumExpenseByType(@Param("type") String type, 
+                                 @Param("from") LocalDateTime from,
+                                 @Param("to") LocalDateTime to);
 }

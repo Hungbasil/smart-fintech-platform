@@ -14,6 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.Locale;
 
 @Service
@@ -55,6 +56,10 @@ public class AuthService {
         if (!matchesPassword(request.getPassword(), user)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
+
+        // Update last login timestamp
+        user.setLastLogin(LocalDateTime.now());
+        userRepository.save(user);
 
         return issueToken(user);
     }

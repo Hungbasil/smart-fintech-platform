@@ -10,4 +10,5 @@ import java.util.UUID;
 public interface DebtRepository extends JpaRepository<Debt, UUID> {
     List<Debt> findByUserIdOrderByStatusAscDueDateAsc(UUID userId);
     Optional<Debt> findByIdAndUserId(UUID id, UUID userId);
+    List<Debt> findByStatus(String status);
 }
