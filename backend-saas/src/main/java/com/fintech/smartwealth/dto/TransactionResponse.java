@@ -12,6 +12,8 @@ public class TransactionResponse {
     private UUID walletId;
     private UUID categoryId;
     private String type;
+    private String userName;
+    private String userEmail;
 
     public TransactionResponse() {
     }
@@ -24,6 +26,18 @@ public class TransactionResponse {
         this.walletId = walletId;
         this.categoryId = categoryId;
         this.type = type;
+    }
+
+    public TransactionResponse(UUID id, BigDecimal amount, String description, LocalDateTime transactionDate, UUID walletId, UUID categoryId, String type, String userName, String userEmail) {
+        this.id = id;
+        this.amount = amount;
+        this.description = description;
+        this.transactionDate = transactionDate;
+        this.walletId = walletId;
+        this.categoryId = categoryId;
+        this.type = type;
+        this.userName = userName;
+        this.userEmail = userEmail;
     }
 
     public UUID getId() {
@@ -80,5 +94,21 @@ public class TransactionResponse {
 
     public void setType(String type) {
         this.type = type;
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    public String getUserEmail() {
+        return userEmail;
+    }
+
+    public void setUserEmail(String userEmail) {
+        this.userEmail = userEmail;
     }
 }

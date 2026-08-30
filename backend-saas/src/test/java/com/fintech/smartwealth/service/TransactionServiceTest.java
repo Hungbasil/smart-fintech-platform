@@ -18,6 +18,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -56,6 +58,20 @@ class TransactionServiceTest {
 
     @InjectMocks
     private TransactionService transactionService;
+
+    @Test
+    void findAllWithoutFiltersShouldUseUserScopedNoFilterQuery() {
+        UUID userId = UUID.randomUUID();
+        Pageable pageable = org.springframework.data.domain.Pageable.unpaged();
+
+        when(securityUtils.isAdmin()).thenReturn(false);
+        when(securityUtils.getCurrentUserId()).thenReturn(userId);
+        when(transactionRepository.findAllByWalletUserId(userId, "", pageable)).thenReturn(Page.empty(pageable));
+
+        transactionService.findAll(null, null, null, null, null, null, pageable);
+
+        verify(transactionRepository).findAllByWalletUserId(userId, "", pageable);
+    }
 
     @Test
     void createExpenseShouldReduceWalletBalance() {

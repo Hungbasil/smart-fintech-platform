@@ -49,23 +49,27 @@ public class TransactionService {
                                              LocalDateTime fromDate,
                                              LocalDateTime toDate,
                                              Pageable pageable) {
-        String normalizedType = type == null ? "" : type;
-        String normalizedKeyword = keyword == null ? "" : keyword.trim();
+        String normalizedType = (type == null || type.isBlank()) ? null : type.trim();
+        String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
         LocalDateTime normalizedFromDate = fromDate == null ? LocalDateTime.of(1, 1, 1, 0, 0) : fromDate;
         LocalDateTime normalizedToDate = toDate == null ? LocalDateTime.of(9999, 12, 31, 23, 59, 59) : toDate;
+
         if (securityUtils.isAdmin()) {
-            return transactionRepository.findAllByFilters(walletId, categoryId, normalizedType, normalizedFromDate, normalizedToDate, normalizedKeyword, pageable)
+            if (walletId == null && categoryId == null && normalizedType == null && normalizedKeyword == null && fromDate == null && toDate == null) {
+                return transactionRepository.findAll(pageable).map(this::toResponse);
+            }
+            return transactionRepository.findAllByFilters(walletId, categoryId, normalizedType, fromDate, toDate, normalizedKeyword, pageable)
                     .map(this::toResponse);
         }
-        if (normalizedType.isEmpty() && normalizedKeyword.isEmpty() && walletId == null && categoryId == null && fromDate == null && toDate == null) {
-            return transactionRepository.findAllByWalletUserId(securityUtils.getCurrentUserId(), normalizedKeyword, pageable)
+        if (normalizedType == null && normalizedKeyword == null && walletId == null && categoryId == null && fromDate == null && toDate == null) {
+            return transactionRepository.findAllByWalletUserId(securityUtils.getCurrentUserId(), "", pageable)
                 .map(this::toResponse);
         }
-        if (normalizedType.isEmpty()) {
-            return transactionRepository.findAllByWalletUserIdWithoutTypeFilter(securityUtils.getCurrentUserId(), walletId, categoryId, normalizedFromDate, normalizedToDate, normalizedKeyword, pageable)
+        if (normalizedType == null) {
+            return transactionRepository.findAllByWalletUserIdWithoutTypeFilter(securityUtils.getCurrentUserId(), walletId, categoryId, normalizedFromDate, normalizedToDate, normalizedKeyword == null ? "" : normalizedKeyword, pageable)
                 .map(this::toResponse);
         }
-        return transactionRepository.findAllByWalletUserIdAndFilters(securityUtils.getCurrentUserId(), walletId, categoryId, normalizedType, normalizedFromDate, normalizedToDate, normalizedKeyword, pageable)
+        return transactionRepository.findAllByWalletUserIdAndFilters(securityUtils.getCurrentUserId(), walletId, categoryId, normalizedType, normalizedFromDate, normalizedToDate, normalizedKeyword == null ? "" : normalizedKeyword, pageable)
                 .map(this::toResponse);
     }
 
@@ -350,16 +354,31 @@ public class TransactionService {
     }
 
     private TransactionResponse toResponse(Transaction transaction) {
+        UUID walletId = transaction.getWallet() != null ? transaction.getWallet().getId() : null;
+        UUID categoryId = transaction.getCategory() != null ? transaction.getCategory().getId() : null;
+        String type = "TRANSFER".equalsIgnoreCase(transaction.getTransactionType())
+                ? "TRANSFER"
+                : (transaction.getCategory() != null && transaction.getCategory().getType() != null
+                    ? transaction.getCategory().getType().toUpperCase()
+                    : "STANDARD");
+
+        String userName = transaction.getWallet() != null && transaction.getWallet().getUser() != null
+                ? transaction.getWallet().getUser().getFullName()
+                : null;
+        String userEmail = transaction.getWallet() != null && transaction.getWallet().getUser() != null
+                ? transaction.getWallet().getUser().getEmail()
+                : null;
+
         return new TransactionResponse(
                 transaction.getId(),
                 transaction.getAmount(),
                 transaction.getDescription(),
                 transaction.getTransactionDate(),
-                transaction.getWallet().getId(),
-                transaction.getCategory().getId(),
-                "TRANSFER".equalsIgnoreCase(transaction.getTransactionType())
-                    ? "TRANSFER"
-                    : transaction.getCategory().getType().toUpperCase()
+                walletId,
+                categoryId,
+                type,
+                userName,
+                userEmail
         );
     }
 }

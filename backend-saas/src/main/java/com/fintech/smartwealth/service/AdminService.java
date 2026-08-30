@@ -222,45 +222,57 @@ public class AdminService {
 
     public AdminFinancialHealthDTO getFinancialHealth() {
         AdminFinancialHealthDTO health = new AdminFinancialHealthDTO();
-        
+
         // Debt overview
-        List<Debt> pendingDebts = debtRepository.findByStatus("PENDING");
+        List<Debt> pendingDebts = debtRepository.findByStatus(DebtStatus.PENDING);
         BigDecimal totalBorrowed = pendingDebts.stream()
-                .filter(d -> d.getType().name().equals("BORROW"))
+                .filter(d -> d != null && d.getType() != null)
+                .filter(d -> d.getType() == DebtType.BORROW)
                 .map(Debt::getAmount)
+                .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal totalLent = pendingDebts.stream()
-                .filter(d -> d.getType().name().equals("LEND"))
+                .filter(d -> d != null && d.getType() != null)
+                .filter(d -> d.getType() == DebtType.LEND)
                 .map(Debt::getAmount)
+                .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        
+
         health.setTotalBorrowed(totalBorrowed);
         health.setTotalLent(totalLent);
         health.setPendingDebtsCount(pendingDebts.size());
-        
+
         // Recurring transactions
         health.setActiveRecurringTransactions(
                 recurringTransactionRepository.countByActive(true));
-        
+
         // Saving goals
         List<SavingGoal> goals = savingGoalRepository.findAll();
-        health.setActiveSavingGoals(goals.size());
-        
-        BigDecimal totalTarget = goals.stream()
+        List<SavingGoal> validGoals = goals.stream()
+                .filter(Objects::nonNull)
+                .filter(g -> g.getTargetAmount() != null || g.getCurrentAmount() != null)
+                .toList();
+        health.setActiveSavingGoals(validGoals.size());
+
+        BigDecimal totalTarget = validGoals.stream()
                 .map(SavingGoal::getTargetAmount)
+                .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal totalCurrent = goals.stream()
+        BigDecimal totalCurrent = validGoals.stream()
                 .map(SavingGoal::getCurrentAmount)
+                .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        
+
         if (totalTarget.compareTo(BigDecimal.ZERO) > 0) {
             BigDecimal progress = totalCurrent.divide(totalTarget, 4, java.math.RoundingMode.HALF_UP);
             health.setSavingGoalsProgress(progress);
         }
-        
+
         // Users by balance range
         List<Wallet> allWallets = walletRepository.findAll();
         Map<String, List<Wallet>> byBalance = allWallets.stream()
+                .filter(Objects::nonNull)
+                .filter(w -> w.getUser() != null && w.getBalance() != null)
                 .collect(Collectors.groupingBy(w -> {
                     BigDecimal b = w.getBalance();
                     if (b.compareTo(BigDecimal.valueOf(1_000_000)) < 0) {
@@ -271,21 +283,24 @@ public class AdminService {
                         return "10M+";
                     }
                 }));
-        
+
         Set<UUID> usersInRange0To1M = byBalance.getOrDefault("0-1M", List.of()).stream()
                 .map(w -> w.getUser().getId())
+                .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         Set<UUID> usersInRange1MTo10M = byBalance.getOrDefault("1M-10M", List.of()).stream()
                 .map(w -> w.getUser().getId())
+                .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         Set<UUID> usersInRangeAbove10M = byBalance.getOrDefault("10M+", List.of()).stream()
                 .map(w -> w.getUser().getId())
+                .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-        
+
         health.setUsersBalanceRange0To1M(usersInRange0To1M.size());
         health.setUsersBalanceRange1MTo10M(usersInRange1MTo10M.size());
         health.setUsersBalanceRangeAbove10M(usersInRangeAbove10M.size());
-        
+
         return health;
     }
 
@@ -304,14 +319,20 @@ public class AdminService {
     }
 
     private TransactionResponse toTransactionResponse(Transaction t) {
+        UUID walletId = t.getWallet() != null ? t.getWallet().getId() : null;
+        UUID categoryId = t.getCategory() != null ? t.getCategory().getId() : null;
+        String categoryType = t.getCategory() != null && t.getCategory().getType() != null
+                ? t.getCategory().getType()
+                : "STANDARD";
+
         return new TransactionResponse(
                 t.getId(),
                 t.getAmount(),
                 t.getDescription(),
                 t.getTransactionDate(),
-                t.getWallet().getId(),
-                t.getCategory().getId(),
-                t.getCategory().getType()
+                walletId,
+                categoryId,
+                categoryType
         );
     }
 }

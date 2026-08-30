@@ -1,6 +1,7 @@
 package com.fintech.smartwealth.config;
 
 import com.fintech.smartwealth.entity.Category;
+import com.fintech.smartwealth.entity.Role;
 import com.fintech.smartwealth.entity.Transaction;
 import com.fintech.smartwealth.entity.User;
 import com.fintech.smartwealth.entity.Wallet;
@@ -66,6 +67,8 @@ public class DatabaseSeeder implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) throws Exception {
+        ensureDefaultAdminUser();
+
         if (userRepository.count() > 0 || walletRepository.count() > 0) {
             log.info("Database already has data — skipping CSV import.");
             return;
@@ -99,6 +102,23 @@ public class DatabaseSeeder implements CommandLineRunner {
         log.info("Wallets imported:     {}", walletCount);
         log.info("Categories imported:  {}", categoryCount);
         log.info("Transactions imported: {}", transactionCount);
+    }
+
+    private void ensureDefaultAdminUser() {
+        String adminEmail = "admin@smartfin.com";
+        userRepository.findByEmail(adminEmail).ifPresentOrElse(
+                user -> log.info("Default admin exists: {}", adminEmail),
+                () -> {
+                    User admin = new User();
+                    admin.setFullName("System Administrator");
+                    admin.setEmail(adminEmail);
+                    admin.setPassword(passwordEncoder.encode("Admin123!"));
+                    admin.setRole(Role.ADMIN);
+                    admin.setActive(true);
+                    userRepository.save(admin);
+                    log.info("Created default admin account: {}", adminEmail);
+                }
+        );
     }
 
     private int seedUsersAndWallets(Path file) throws IOException {

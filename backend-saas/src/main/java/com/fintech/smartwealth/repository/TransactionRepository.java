@@ -146,12 +146,12 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     @Query("""
             SELECT t
             FROM Transaction t
-            WHERE (:walletId IS NULL OR t.wallet.id = :walletId)
-              AND (:categoryId IS NULL OR t.category.id = :categoryId)
-              AND (:type = '' OR UPPER(t.category.type) = UPPER(:type))
-              AND (:fromDate IS NULL OR t.transactionDate >= :fromDate)
-                    AND (:toDate IS NULL OR t.transactionDate <= :toDate)
-                    AND (:keyword = '' OR LOWER(t.description) LIKE LOWER(CONCAT('%', :keyword, '%')))
+            WHERE (CAST(:walletId AS uuid) IS NULL OR t.wallet.id = CAST(:walletId AS uuid))
+              AND (CAST(:categoryId AS uuid) IS NULL OR t.category.id = CAST(:categoryId AS uuid))
+              AND (CAST(:type AS text) IS NULL OR CAST(:type AS text) = '' OR UPPER(t.category.type) = UPPER(CAST(:type AS text)))
+              AND (CAST(:fromDate AS timestamp) IS NULL OR t.transactionDate >= CAST(:fromDate AS timestamp))
+              AND (CAST(:toDate AS timestamp) IS NULL OR t.transactionDate <= CAST(:toDate AS timestamp))
+              AND (CAST(:keyword AS text) IS NULL OR CAST(:keyword AS text) = '' OR LOWER(t.description) LIKE LOWER(CONCAT('%', CAST(:keyword AS text), '%')))
             """)
     Page<Transaction> findAllByFilters(@Param("walletId") UUID walletId,
                                        @Param("categoryId") UUID categoryId,
@@ -165,11 +165,11 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
               SELECT t
               FROM Transaction t
                       WHERE t.wallet.user.id = :userId
-                        AND (:walletId IS NULL OR t.wallet.id = :walletId)
-                AND (:categoryId IS NULL OR t.category.id = :categoryId)
-                AND (:fromDate IS NULL OR t.transactionDate >= :fromDate)
-                AND (:toDate IS NULL OR t.transactionDate <= :toDate)
-                         AND (:keyword = '' OR LOWER(t.description) LIKE LOWER(CONCAT('%', :keyword, '%')))
+                        AND (CAST(:walletId AS uuid) IS NULL OR t.wallet.id = CAST(:walletId AS uuid))
+                AND (CAST(:categoryId AS uuid) IS NULL OR t.category.id = CAST(:categoryId AS uuid))
+                AND (CAST(:fromDate AS timestamp) IS NULL OR t.transactionDate >= CAST(:fromDate AS timestamp))
+                AND (CAST(:toDate AS timestamp) IS NULL OR t.transactionDate <= CAST(:toDate AS timestamp))
+                AND (CAST(:keyword AS text) IS NULL OR CAST(:keyword AS text) = '' OR LOWER(t.description) LIKE LOWER(CONCAT('%', CAST(:keyword AS text), '%')))
               """)
       Page<Transaction> findAllByWalletUserIdWithoutTypeFilter(@Param("userId") UUID userId,
                                                                 @Param("walletId") UUID walletId,
@@ -183,12 +183,12 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             SELECT t
             FROM Transaction t
             WHERE t.wallet.user.id = :userId
-              AND (:walletId IS NULL OR t.wallet.id = :walletId)
-              AND (:categoryId IS NULL OR t.category.id = :categoryId)
-              AND (:type = '' OR UPPER(t.category.type) = UPPER(:type))
-              AND (:fromDate IS NULL OR t.transactionDate >= :fromDate)
-              AND (:toDate IS NULL OR t.transactionDate <= :toDate)
-                    AND (:keyword = '' OR LOWER(t.description) LIKE LOWER(CONCAT('%', :keyword, '%')))
+              AND (CAST(:walletId AS uuid) IS NULL OR t.wallet.id = CAST(:walletId AS uuid))
+              AND (CAST(:categoryId AS uuid) IS NULL OR t.category.id = CAST(:categoryId AS uuid))
+              AND (CAST(:type AS text) IS NULL OR CAST(:type AS text) = '' OR UPPER(t.category.type) = UPPER(CAST(:type AS text)))
+              AND (CAST(:fromDate AS timestamp) IS NULL OR t.transactionDate >= CAST(:fromDate AS timestamp))
+              AND (CAST(:toDate AS timestamp) IS NULL OR t.transactionDate <= CAST(:toDate AS timestamp))
+              AND (CAST(:keyword AS text) IS NULL OR CAST(:keyword AS text) = '' OR LOWER(t.description) LIKE LOWER(CONCAT('%', CAST(:keyword AS text), '%')))
             """)
     Page<Transaction> findAllByWalletUserIdAndFilters(@Param("userId") UUID userId,
                                                       @Param("walletId") UUID walletId,
