@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { NavLink, Link, useLocation } from 'react-router-dom';
+import { NavLink, Link, Outlet, useLocation } from 'react-router-dom';
 import auth from '../services/auth';
 import AiChatWidget from './AiChatWidget';
 import { API_BASE_URL } from '../services/api';
@@ -15,7 +15,7 @@ const navigation = [
   { label: 'Saving goals', to: '/saving-goals', icon: Goal },
 ];
 
-export const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
+export const Layout: React.FC = () => {
   const location = useLocation();
   const [analyticsOpen, setAnalyticsOpen] = useState(location.pathname.startsWith('/analytics'));
   const [overviewOpen, setOverviewOpen] = useState(location.pathname === '/' || location.pathname.startsWith('/overview') || location.pathname.startsWith('/investments'));
@@ -35,7 +35,7 @@ export const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) =
   }, []);
 
   if (!auth.isAuthenticated()) {
-    return <>{children}</>;
+    return <Outlet />;
   }
 
   const user = auth.getUser();
@@ -86,7 +86,7 @@ export const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) =
           <div className="hidden text-[13px] font-semibold text-[#71808c] lg:block">Personal finance workspace</div>
           <div className="relative"><button type="button" aria-expanded={profileOpen} onClick={() => setProfileOpen((open) => !open)} className="flex items-center gap-2 rounded-full border border-[#e3ebe8] bg-white py-1.5 pl-1.5 pr-3 text-xs font-bold text-[#17212b] shadow-sm"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#dcefeb] text-[11px] text-[#075c57]">{initials}</span>{displayName}<ChevronDown size={14} className={`text-[#9aa7af] transition-transform ${profileOpen ? 'rotate-180' : ''}`} /></button>{profileOpen && <div className="absolute right-0 top-full z-30 mt-2 w-56 rounded-xl border border-[#e3ebe8] bg-white p-2 shadow-lg"><div className="border-b border-[#edf2f0] px-3 py-2"><p className="truncate text-xs font-extrabold text-[#17212b]">{displayName}</p><p className="truncate text-[11px] text-[#9aa7af]">{user?.email}</p></div><button type="button" onClick={() => { auth.logout(); window.location.href = '/login'; }} className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-bold text-[#71808c] hover:bg-[#fff1ef] hover:text-[#d76756]"><LogOut size={15} />Sign out</button></div>}</div>
         </header>
-        <main className="app-content page-enter">{children}</main>
+        <main className="app-content page-enter"><Outlet /></main>
         <AiChatWidget />
         <div className="fixed inset-x-0 bottom-0 z-20 lg:hidden">
           {(analyticsOpen || overviewOpen || debtsOpen) && <div className={`absolute bottom-full mb-2 w-44 rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] p-2 shadow-lg [animation:rise-in_180ms_ease-out] ${debtsOpen ? 'left-[152px]' : analyticsOpen ? 'left-[80px]' : 'left-2'}`}>{overviewOpen && <><NavLink onClick={() => setOverviewOpen(false)} to="/overview" className={({ isActive }) => `block rounded-lg px-3 py-2.5 text-xs font-bold no-underline ${isActive ? 'bg-[#e4f4f0] text-[#075c57]' : 'text-[#71808c] hover:bg-[#f1f6f4]'}`}>Overview</NavLink><NavLink onClick={() => setOverviewOpen(false)} to="/investments" className={({ isActive }) => `block rounded-lg px-3 py-2.5 text-xs font-bold no-underline ${isActive ? 'bg-[#e4f4f0] text-[#075c57]' : 'text-[#71808c] hover:bg-[#f1f6f4]'}`}>Investments</NavLink></>}{analyticsOpen && <><NavLink onClick={() => setAnalyticsOpen(false)} to="/analytics/overview" className={({ isActive }) => `block rounded-lg px-3 py-2.5 text-xs font-bold no-underline ${isActive ? 'bg-[#e4f4f0] text-[#075c57]' : 'text-[#71808c] hover:bg-[#f1f6f4]'}`}>Analytics overview</NavLink><NavLink onClick={() => setAnalyticsOpen(false)} to="/analytics/predictive" className={({ isActive }) => `block rounded-lg px-3 py-2.5 text-xs font-bold no-underline ${isActive ? 'bg-[#e4f4f0] text-[#075c57]' : 'text-[#71808c] hover:bg-[#f1f6f4]'}`}>Forecast</NavLink></>}{debtsOpen && <><NavLink onClick={() => setDebtsOpen(false)} to="/debts" end className={({ isActive }) => `block rounded-lg px-3 py-2.5 text-xs font-bold no-underline ${isActive ? 'bg-[#e4f4f0] text-[#075c57]' : 'text-[#71808c] hover:bg-[#f1f6f4]'}`}>Debts Overview</NavLink><NavLink onClick={() => setDebtsOpen(false)} to="/debts/calendar" className={({ isActive }) => `block rounded-lg px-3 py-2.5 text-xs font-bold no-underline ${isActive ? 'bg-[#e4f4f0] text-[#075c57]' : 'text-[#71808c] hover:bg-[#f1f6f4]'}`}>Calendar</NavLink></>}</div>}

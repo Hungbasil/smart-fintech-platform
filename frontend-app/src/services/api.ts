@@ -27,7 +27,17 @@ export interface WalletRequest {
   balance: number;
 }
 
+export const createWallet = (request: WalletRequest) => api.post<Wallet>('/wallets', request);
 export const updateWallet = (id: string, request: WalletRequest) => api.put(`/wallets/${id}`, request);
+export const deleteWallet = (id: string) => api.delete(`/wallets/${id}`);
+
+export const getTransactions = (page = 0, size = 10, filters?: Record<string, string | number | undefined>) =>
+  api.get<{ content: any[]; totalElements: number; totalPages: number }>('/transactions', {
+    params: { page, size, ...filters },
+  });
+
+export const createTransaction = (request: Record<string, unknown>) => api.post('/transactions', request);
+export const deleteTransaction = (id: string) => api.delete(`/transactions/${id}`);
 
 export const updateRecurringTransaction = (id: string, request: object) => api.put(`/recurring-transactions/${id}`, request);
 
