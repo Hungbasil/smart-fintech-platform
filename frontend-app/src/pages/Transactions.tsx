@@ -23,6 +23,7 @@ import {
   Card,
   CardHeader,
   CardBody,
+  SkeletonTable,
 } from "../components";
 import api from "../services/api";
 import { createVoiceTransaction, scanReceipt, transferFunds } from "../services/api";
@@ -561,7 +562,21 @@ export const Transactions: React.FC = () => {
     }
   };
 
-  if (loading) return <div className="p-8">Loading...</div>;
+  if (loading) {
+    return (
+      <div className="animate-fade-in">
+        <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+          <div />
+          <div className="flex gap-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-10 w-10 rounded-lg bg-gray-200 animate-pulse" />
+            ))}
+          </div>
+        </div>
+        <SkeletonTable rows={6} columns={4} />
+      </div>
+    );
+  }
   if (error) return <div className="p-8 text-red-600">Error: {error}</div>;
 
   return (

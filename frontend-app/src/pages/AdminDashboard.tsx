@@ -441,7 +441,7 @@ export function AdminDashboard() {
           <div className="space-y-6 py-6">
 
             {activeTab === 'overview' && (
-              <>
+              <div className="animate-fade-in">
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   {metricCards.map(({ label, value, icon: Icon, tone }) => (
                     <div key={label} className="rounded-[26px] border border-slate-200/80 bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_38px_rgba(15,23,42,0.06)]">
@@ -515,11 +515,12 @@ export function AdminDashboard() {
                     </div>
                   </div>
                 </div>
-              </>
+              </div>
             )}
 
             {activeTab === 'users' && (
-              <div className="rounded-[28px] border border-slate-200/80 bg-white p-4 shadow-[0_16px_36px_rgba(15,23,42,0.04)] sm:p-5">
+              <div className="animate-fade-in">
+                <div className="rounded-[28px] border border-slate-200/80 bg-white p-4 shadow-[0_16px_36px_rgba(15,23,42,0.04)] sm:p-5">
                 <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <h3 className="text-[1.5rem] font-bold leading-tight tracking-[-0.05em] text-slate-900 sm:text-[1.7rem]">User management</h3>
@@ -563,10 +564,11 @@ export function AdminDashboard() {
                   </Button>
                 </div>
               </div>
+              </div>
             )}
 
             {activeTab === 'transactions' && (
-              <div className="space-y-6">
+              <div className="animate-fade-in space-y-6">
                 <div className="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_10px_30px_rgba(15,23,42,0.05)] sm:p-5">
                   <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                     <div>

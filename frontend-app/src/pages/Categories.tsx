@@ -93,7 +93,7 @@ export const Categories: React.FC = () => {
   const expenseCategories = categories.filter((category) => category.type.toUpperCase() === 'EXPENSE');
 
   return (
-    <div>
+    <div className="animate-fade-in">
       <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div><div className="eyebrow">Your taxonomy</div><h1 className="page-title">Categories</h1><p className="page-subtitle">Organize income and expenses so your analytics stay meaningful.</p></div>
         <button onClick={openCreate} className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#087f74] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#075c57]"><Plus size={17} />New category</button>

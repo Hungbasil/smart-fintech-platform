@@ -8,10 +8,17 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ variant = 'primary', size = 'md', isLoading = false, children, className, ...props }, ref) => {
-    const baseStyles = 'font-bold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087f74] focus-visible:ring-offset-2';
+    const baseStyles = `
+      font-bold rounded-xl 
+      transition-all duration-200 
+      disabled:opacity-50 disabled:cursor-not-allowed 
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087f74] focus-visible:ring-offset-2
+      transform hover:scale-105 active:scale-95
+      hover:shadow-lg hover:-translate-y-0.5
+    `;
     
     const variantStyles = {
-      primary: 'bg-[#087f74] text-white hover:bg-[#075c57] shadow-sm hover:shadow-md',
+      primary: 'bg-[#087f74] text-white hover:bg-[#075c57] shadow-sm',
       secondary: 'bg-[#edf4f2] text-[#075c57] hover:bg-[#dcefeb]',
       danger: 'bg-[#fff1ef] text-[#c25344] hover:bg-[#ffe3df]',
     };
@@ -29,7 +36,14 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={isLoading || props.disabled}
         {...props}
       >
-        {isLoading ? 'Loading...' : children}
+        {isLoading ? (
+          <span className="flex items-center gap-2">
+            <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
+            Loading...
+          </span>
+        ) : (
+          children
+        )}
       </button>
     );
   }

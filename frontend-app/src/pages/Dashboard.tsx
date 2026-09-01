@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowUpRight, CircleDollarSign, ReceiptText, WalletCards } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Card as UiCard, CardHeader, CardBody } from '../components';
+import { Card as UiCard, CardHeader, CardBody, SkeletonCard, Skeleton, AnimatedCounter } from '../components';
 import api, { getAnalyticsMonthly, getAnalyticsSummary } from '../services/api';
 import auth from '../services/auth';
 import { currency } from '../services/format';
@@ -83,7 +83,31 @@ export const Dashboard: React.FC = () => {
 
   const chartData = monthlyData.map((item) => ({ ...item, expenses: item.expense }));
 
-  if (loading) return <div className="p-8">Loading...</div>;
+  if (loading) {
+    return (
+      <div className="animate-fade-in">
+        <div className="mb-8">
+          <Skeleton height={24} width="30%" className="mb-2" />
+          <Skeleton height={32} width="40%" className="mb-2" />
+          <Skeleton height={16} width="50%" />
+        </div>
+        <div className="mb-7 grid grid-cols-1 gap-4 md:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="surface p-6 rounded-2xl">
+              <Skeleton height={20} width="60%" className="mb-6" />
+              <Skeleton height={32} width="100%" className="mb-3" />
+              <Skeleton height={14} width="80%" />
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr_1fr]">
+          <SkeletonCard count={1} />
+          <SkeletonCard count={1} />
+        </div>
+      </div>
+    );
+  }
+  
   if (error) return <div className="p-8 text-red-600">Error: {error}</div>;
 
   return (
@@ -95,13 +119,25 @@ export const Dashboard: React.FC = () => {
 
       <div className="mb-7 grid grid-cols-1 gap-4 md:grid-cols-3">
         {[
-          { label: 'Total balance', value: currency.format(data?.totalBalance ?? 0), detail: 'Across all wallets', icon: WalletCards, tone: 'teal' },
-          { label: 'Monthly activity', value: `${data?.monthlyTransactions ?? 0}`, detail: 'Transactions this month', icon: ReceiptText, tone: 'amber' },
-          { label: 'Monthly volume', value: currency.format(data?.monthlyVolume ?? 0), detail: 'Tracked financial activity', icon: CircleDollarSign, tone: 'coral' },
-        ].map(({ label, value, detail, icon: Icon, tone }) => (
-          <div key={label} className="surface surface-pad group transition hover:-translate-y-0.5 hover:shadow-md">
+          { label: 'Total balance', value: data?.totalBalance ?? 0, valueType: 'currency', detail: 'Across all wallets', icon: WalletCards, tone: 'teal' },
+          { label: 'Monthly activity', value: data?.monthlyTransactions ?? 0, valueType: 'number', detail: 'Transactions this month', icon: ReceiptText, tone: 'amber' },
+          { label: 'Monthly volume', value: data?.monthlyVolume ?? 0, valueType: 'currency', detail: 'Tracked financial activity', icon: CircleDollarSign, tone: 'coral' },
+        ].map(({ label, value, valueType, detail, icon: Icon, tone }) => (
+          <div key={label} className="surface surface-pad group transition hover:-translate-y-0.5 hover:shadow-md animate-fade-in">
             <div className="mb-6 flex items-start justify-between"><span className={`flex h-10 w-10 items-center justify-center rounded-xl ${tone === 'teal' ? 'bg-[#e4f4f0] text-[#087f74]' : tone === 'amber' ? 'bg-[#fff4df] text-[#bd7a22]' : 'bg-[#fff1ef] text-[#d76756]'}`}><Icon size={19} /></span><ArrowUpRight size={16} className="text-[#c0cbc7] transition group-hover:text-[#087f74]" /></div>
-            <div className="mb-1 text-[12px] font-bold text-[#71808c]">{label}</div><div className="metric-value">{value}</div><div className="mt-2 text-[12px] text-[#9aa7af]">{detail}</div>
+            <div className="mb-1 text-[12px] font-bold text-[#71808c]">{label}</div>
+            <div className="metric-value">
+              {valueType === 'currency' ? (
+                <span>₫</span>
+              ) : null}
+              <AnimatedCounter 
+                end={value} 
+                duration={1800}
+                decimals={0}
+                className="metric-value"
+              />
+            </div>
+            <div className="mt-2 text-[12px] text-[#9aa7af]">{detail}</div>
           </div>
         ))}
       </div>
@@ -109,7 +145,7 @@ export const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr_1fr]">
         <UiCard>
           <CardHeader><div className="flex items-start justify-between"><div><h3 className="section-title">Activity overview</h3><p className="section-caption mt-1">Transaction volume across the last six months</p></div><span className="rounded-lg bg-[#e4f4f0] px-2.5 py-1 text-[11px] font-bold text-[#087f74]">Live data</span></div></CardHeader>
-          <CardBody><ResponsiveContainer width="100%" height={285}><BarChart data={chartData} barSize={12} barGap={5}><CartesianGrid vertical={false} stroke="#e8efec" /><XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#9aa7af', fontSize: 12 }} /><YAxis axisLine={false} tickLine={false} tick={{ fill: '#9aa7af', fontSize: 11 }} tickFormatter={(value) => `${Number(value) / 1000}k`} /><Tooltip cursor={{ fill: '#f4f7f6' }} formatter={(value, name) => [currency.format(Number(value)), name === 'income' ? 'Income' : 'Expenses']} contentStyle={{ border: '1px solid #e3ebe8', borderRadius: 10, boxShadow: '0 8px 20px rgba(23,33,43,.08)' }} /><Bar dataKey="income" fill="#087f74" radius={[6, 6, 2, 2]} /><Bar dataKey="expenses" fill="#d76756" radius={[6, 6, 2, 2]} /></BarChart></ResponsiveContainer></CardBody>
+          <CardBody><div className="animate-fade-in"><ResponsiveContainer width="100%" height={285}><BarChart data={chartData} barSize={12} barGap={5}><CartesianGrid vertical={false} stroke="#e8efec" /><XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#9aa7af', fontSize: 12 }} /><YAxis axisLine={false} tickLine={false} tick={{ fill: '#9aa7af', fontSize: 11 }} tickFormatter={(value) => `${Number(value) / 1000}k`} /><Tooltip cursor={{ fill: '#f4f7f6' }} formatter={(value, name) => [currency.format(Number(value)), name === 'income' ? 'Income' : 'Expenses']} contentStyle={{ border: '1px solid #e3ebe8', borderRadius: 10, boxShadow: '0 8px 20px rgba(23,33,43,.08)' }} /><Bar dataKey="income" fill="#087f74" radius={[6, 6, 2, 2]} /><Bar dataKey="expenses" fill="#d76756" radius={[6, 6, 2, 2]} /></BarChart></ResponsiveContainer></div></CardBody>
         </UiCard>
         <UiCard>
           <CardHeader><div><h3 className="section-title">Recent transactions</h3><p className="section-caption mt-1">Your latest financial activity</p></div></CardHeader>

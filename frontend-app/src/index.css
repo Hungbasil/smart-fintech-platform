@@ -18,6 +18,7 @@
   --amber: #bd7a22;
   --shadow-sm: 0 2px 10px rgba(23, 33, 43, 0.05);
   --shadow-md: 0 14px 35px rgba(23, 33, 43, 0.08);
+  --shadow-lg: 0 20px 45px rgba(23, 33, 43, 0.12);
   --sans: "Plus Jakarta Sans", "Segoe UI", sans-serif;
 
   font: 15px/1.5 var(--sans);
@@ -44,12 +45,23 @@ body {
 
 a {
   color: inherit;
+  transition: all 200ms ease-out;
 }
 
 button,
 input,
 select {
   font: inherit;
+}
+
+button {
+  transition: all 200ms ease-out;
+}
+
+input,
+textarea,
+select {
+  transition: border-color 200ms ease-out, box-shadow 200ms ease-out, background-color 200ms ease-out;
 }
 
 ::selection {
@@ -68,8 +80,66 @@ select {
   }
 }
 
+@keyframes fade-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-slide {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes loading-shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
 .page-enter {
   animation: rise-in 420ms ease-out both;
+}
+
+.modal-enter {
+  animation: fade-scale 300ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.modal-exit {
+  animation: fade-scale 200ms ease-in reverse;
+}
+
+.toast-enter {
+  animation: toast-slide 300ms ease-out both;
+}
+
+.toast-exit {
+  animation: toast-slide 200ms ease-in reverse;
 }
 
 .splash-screen {

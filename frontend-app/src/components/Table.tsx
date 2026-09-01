@@ -71,7 +71,7 @@ export const TableRow = React.forwardRef<HTMLTableRowElement, TableRowProps>(
     return (
       <tr
         ref={ref}
-        className={`hover:bg-gray-50 transition-colors ${className || ''}`}
+        className={`border-b border-[#edf2f0] transition-all duration-200 hover:bg-[#f9fcfb] hover:shadow-sm ${className || ''}`}
         {...props}
       >
         {children}
