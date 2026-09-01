@@ -16,6 +16,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 @Component
@@ -45,8 +47,9 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         User user = userRepository.findByEmail(email.trim().toLowerCase())
                 .orElseGet(() -> createUser(oauthUser, email));
         String token = jwtTokenProvider.createToken(user);
+        String encodedToken = URLEncoder.encode(token, StandardCharsets.UTF_8);
 
-        response.sendRedirect(frontendUrl + "/oauth2/redirect?token=" + token);
+        response.sendRedirect(frontendUrl + "/oauth2/redirect?token=" + encodedToken);
     }
 
     private User createUser(OAuth2User oauthUser, String email) {
