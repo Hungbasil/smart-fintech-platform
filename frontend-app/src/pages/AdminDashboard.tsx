@@ -31,6 +31,7 @@ import {
   Settings2,
   Download,
   X,
+  Trash2,
 } from 'lucide-react';
 import { UserTable } from '../components/UserTable';
 import { Button } from '../components/Button';
@@ -45,9 +46,11 @@ import {
   getWallets,
   getTransactions,
   createWallet,
-  deleteWallet,
   deleteTransaction,
   transferFunds,
+  freezeAdminWallet,
+  unfreezeAdminWallet,
+  deleteAdminWallet,
 } from '../services/api';
 import type {
   AdminOverviewDTO,
@@ -107,6 +110,11 @@ export function AdminDashboard() {
     amount: '100000',
     description: 'Admin transfer',
   });
+  const [walletsPage, setWalletsPage] = useState(0);
+  const [walletsPerPage] = useState(10);
+  const [walletToFreeze, setWalletToFreeze] = useState<{ id: string; name: string; frozen: boolean } | null>(null);
+  const [walletToDelete, setWalletToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [actioningWalletId, setActioningWalletId] = useState<string | null>(null);
 
   const handleLogout = () => {
     auth.logout();
@@ -173,17 +181,50 @@ export function AdminDashboard() {
     }
   };
 
-  const handleFreezeWallet = async (walletId: string, walletName: string) => {
+  const handleFreezeWallet = async (walletId: string, walletName: string, isFrozen: boolean) => {
+    setWalletToFreeze({ id: walletId, name: walletName, frozen: isFrozen });
+  };
+
+  const confirmFreezeWallet = async () => {
+    if (!walletToFreeze) return;
+
     try {
-      setWallets((current) =>
-        current.map((wallet) =>
-          wallet.id === walletId ? { ...wallet, frozen: !wallet.frozen } : wallet
-        )
-      );
-      toast.success(`${walletName} ${wallets.find((wallet) => wallet.id === walletId)?.frozen ? 'unfrozen' : 'frozen'} successfully`);
+      setActioningWalletId(walletToFreeze.id);
+      if (walletToFreeze.frozen) {
+        await unfreezeAdminWallet(walletToFreeze.id);
+        toast.success(`${walletToFreeze.name} unfrozen successfully`);
+      } else {
+        await freezeAdminWallet(walletToFreeze.id);
+        toast.success(`${walletToFreeze.name} frozen successfully`);
+      }
+      setWalletToFreeze(null);
+      await loadData();
     } catch (error) {
-      toast.error('Failed to update wallet state');
+      toast.error('Failed to update wallet status');
       console.error(error);
+    } finally {
+      setActioningWalletId(null);
+    }
+  };
+
+  const handleDeleteWalletClick = (walletId: string, walletName: string) => {
+    setWalletToDelete({ id: walletId, name: walletName });
+  };
+
+  const confirmDeleteWallet = async () => {
+    if (!walletToDelete) return;
+
+    try {
+      setActioningWalletId(walletToDelete.id);
+      await deleteAdminWallet(walletToDelete.id);
+      toast.success('Wallet deleted successfully');
+      setWalletToDelete(null);
+      await loadData();
+    } catch (error) {
+      toast.error('Failed to delete wallet');
+      console.error(error);
+    } finally {
+      setActioningWalletId(null);
     }
   };
 
@@ -210,19 +251,6 @@ export function AdminDashboard() {
     link.click();
     URL.revokeObjectURL(url);
     toast.success('CSV exported successfully');
-  };
-
-  const handleDeleteWallet = async (walletId: string, name: string) => {
-    if (!window.confirm(`Delete wallet "${name}"? This action cannot be undone.`)) return;
-
-    try {
-      await deleteWallet(walletId);
-      toast.success('Wallet deleted');
-      await loadData();
-    } catch (error) {
-      toast.error('Failed to delete wallet');
-      console.error(error);
-    }
   };
 
   const handleDeleteTransaction = async (transactionId: string, title: string) => {
@@ -815,37 +843,71 @@ export function AdminDashboard() {
                 <div className="rounded-[30px] border border-slate-200/80 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.04)]">
                   <h3 className="mb-4 text-[1.45rem] font-bold leading-tight tracking-[-0.04em] text-slate-900 sm:text-[1.6rem]">Wallet portfolio</h3>
                   <div className="space-y-3">
-                    {wallets.map((wallet) => (
-                      <div key={wallet.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                        <div>
-                          <p className="font-semibold text-slate-900">{wallet.name}</p>
-                          <p className="text-xs text-slate-500">Wallet ID: {wallet.id.slice(0, 8)}</p>
-                          {wallet.frozen && (
-                            <span className="mt-1 inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700">Frozen</span>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <p className="text-lg font-black text-slate-900">{formatMoney(wallet.balance)}</p>
-                          <div className="mt-1 flex flex-wrap justify-end gap-2">
-                            <button
-                              type="button"
-                              className="text-xs font-medium text-violet-600 hover:text-violet-700"
-                              onClick={() => handleFreezeWallet(wallet.id, wallet.name)}
-                            >
-                              {wallet.frozen ? 'Unfreeze' : 'Freeze'}
-                            </button>
-                            <button
-                              type="button"
-                              className="text-xs font-medium text-rose-600 hover:text-rose-700"
-                              onClick={() => handleDeleteWallet(wallet.id, wallet.name)}
-                            >
-                              Delete wallet
-                            </button>
+                    {wallets.length > 0 ? (
+                      wallets.slice(walletsPage * walletsPerPage, (walletsPage + 1) * walletsPerPage).map((wallet) => (
+                        <div key={wallet.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                          <div>
+                            <p className="font-semibold text-slate-900">{wallet.name}</p>
+                            <p className="text-xs text-slate-500">Wallet ID: {wallet.id.slice(0, 8)}</p>
+                            {wallet.frozen && (
+                              <span className="mt-1 inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700">Frozen</span>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-black text-slate-900">{formatMoney(wallet.balance)}</p>
+                            <div className="mt-1 flex flex-wrap justify-end gap-2">
+                              <button
+                                type="button"
+                                disabled={actioningWalletId === wallet.id}
+                                className="text-xs font-medium text-violet-600 hover:text-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                onClick={() => handleFreezeWallet(wallet.id, wallet.name, !!wallet.frozen)}
+                              >
+                                {wallet.frozen ? 'Unfreeze' : 'Freeze'}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={actioningWalletId === wallet.id}
+                                className="text-xs font-medium text-rose-600 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                onClick={() => handleDeleteWalletClick(wallet.id, wallet.name)}
+                              >
+                                Delete wallet
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    )) || <p className="text-slate-500">No wallets available.</p>}
+                      ))
+                    ) : (
+                      <p className="text-slate-500">No wallets available.</p>
+                    )}
                   </div>
+
+                  {wallets.length > walletsPerPage && (
+                    <div className="mt-5 flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setWalletsPage((p) => Math.max(0, p - 1))}
+                        disabled={walletsPage === 0}
+                        className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-200 hover:border-slate-300 hover:shadow-md disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
+                      >
+                        Previous
+                      </button>
+                      <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 shadow-inner shadow-slate-100">
+                        <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Page</span>
+                        <span className="rounded-xl bg-[#0f172a] px-2.5 py-1 text-sm font-bold text-white shadow-sm">
+                          {walletsPage + 1}
+                        </span>
+                        <span className="text-sm text-slate-500">/ {Math.ceil(wallets.length / walletsPerPage)}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setWalletsPage((p) => Math.min(Math.ceil(wallets.length / walletsPerPage) - 1, p + 1))}
+                        disabled={walletsPage >= Math.ceil(wallets.length / walletsPerPage) - 1}
+                        className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(15,23,42,0.18)] transition-all duration-200 hover:bg-slate-800 hover:shadow-[0_10px_22px_rgba(15,23,42,0.2)] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1051,6 +1113,96 @@ export function AdminDashboard() {
               </div>
             )}
           </div>
+
+          {/* Freeze/Unfreeze Wallet Confirmation Modal */}
+          {walletToFreeze && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+              <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
+                <div className="mb-3 flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 text-violet-600">
+                    <X size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">
+                      {walletToFreeze.frozen ? 'Unfreeze wallet' : 'Freeze wallet'}
+                    </h3>
+                    <p className="text-sm text-slate-500">This action will be applied immediately.</p>
+                  </div>
+                </div>
+
+                <p className="mb-2 text-sm text-slate-700">
+                  {walletToFreeze.frozen ? 'Unfreeze' : 'Freeze'} <span className="font-semibold text-slate-900">"{walletToFreeze.name}"</span>?
+                </p>
+                <p className="mb-5 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-sm text-violet-700">
+                  {walletToFreeze.frozen 
+                    ? 'This wallet will be available for transactions again.'
+                    : 'This wallet will be locked and unavailable for transactions.'}
+                </p>
+
+                <div className="flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setWalletToFreeze(null)}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmFreezeWallet}
+                    disabled={actioningWalletId === walletToFreeze.id}
+                    className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {actioningWalletId === walletToFreeze.id 
+                      ? 'Processing...' 
+                      : walletToFreeze.frozen ? 'Unfreeze' : 'Freeze'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Wallet Confirmation Modal */}
+          {walletToDelete && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+              <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
+                <div className="mb-3 flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-100 text-red-600">
+                    <Trash2 size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">Delete wallet</h3>
+                    <p className="text-sm text-slate-500">This action cannot be undone.</p>
+                  </div>
+                </div>
+
+                <p className="mb-2 text-sm text-slate-700">
+                  Delete wallet <span className="font-semibold text-slate-900">"{walletToDelete.name}"</span>?
+                </p>
+                <p className="mb-5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  All associated transactions and data will be permanently removed. This cannot be reversed.
+                </p>
+
+                <div className="flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setWalletToDelete(null)}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmDeleteWallet}
+                    disabled={actioningWalletId === walletToDelete.id}
+                    className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {actioningWalletId === walletToDelete.id ? 'Deleting...' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>

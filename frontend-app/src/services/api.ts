@@ -298,12 +298,28 @@ export const getAdminUsers = (page = 0, size = 10, search?: string) =>
 
 export const getAdminUserDetail = (id: string) => api.get<UserDTO>(`/admin/users/${id}`);
 
+export const updateAdminUser = (id: string, data: { fullName: string; email: string }) => api.put<UserDTO>(`/admin/users/${id}`, data);
+
 export const lockAdminUser = (id: string) => api.post(`/admin/users/${id}/lock`, {});
 
 export const unlockAdminUser = (id: string) => api.post(`/admin/users/${id}/unlock`, {});
 
+export const deleteAdminUser = (id: string) => api.delete(`/admin/users/${id}`);
+
 export const changeAdminUserRole = (id: string, request: RoleChangeRequest) =>
   api.post(`/admin/users/${id}/role`, request);
+
+// Admin Wallet Management
+export const freezeAdminWallet = (id: string) => api.post(`/admin/wallets/${id}/freeze`, {});
+
+export const unfreezeAdminWallet = (id: string) => api.post(`/admin/wallets/${id}/unfreeze`, {});
+
+export const deleteAdminWallet = (id: string) => api.delete(`/admin/wallets/${id}`);
+
+export const getAdminWallets = (page = 0, size = 10) =>
+  api.get<{ content: Array<Wallet & { frozen?: boolean; ownerEmail?: string }>; totalElements: number; totalPages: number }>('/admin/wallets', {
+    params: { page, size },
+  });
 
 // Admin Analytics
 export const getAdminOverview = () => api.get<AdminOverviewDTO>('/admin/analytics/overview');
