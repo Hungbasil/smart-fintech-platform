@@ -85,6 +85,75 @@ public class AdminService {
                 id.toString());
     }
 
+    public UserDTO updateUser(UUID id, UpdateUserRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        String fullName = request.getFullName() == null ? user.getFullName() : request.getFullName().trim();
+        String email = request.getEmail() == null ? user.getEmail() : request.getEmail().trim();
+
+        if (fullName == null || fullName.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Full name is required");
+        }
+        if (email == null || email.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email is required");
+        }
+
+        String normalizedEmail = email.toLowerCase(Locale.ROOT);
+        if (userRepository.findByEmail(normalizedEmail).filter(existing -> !existing.getId().equals(id)).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already in use");
+        }
+
+        user.setFullName(fullName);
+        user.setEmail(normalizedEmail);
+        userRepository.save(user);
+        auditService.logAdminAction("UPDATE_USER", "User " + user.getEmail() + " updated by admin", id.toString());
+        return toUserDTO(user);
+    }
+
+    public void deleteUser(UUID id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        List<Transaction> transactions = transactionRepository.findByWalletUserId(id);
+        if (!transactions.isEmpty()) {
+            transactionRepository.deleteAll(transactions);
+        }
+
+        List<Budget> budgets = budgetRepository.findByUserId(id);
+        if (!budgets.isEmpty()) {
+            budgetRepository.deleteAll(budgets);
+        }
+
+        List<RecurringTransaction> recurringTransactions = recurringTransactionRepository.findByUserId(id);
+        if (!recurringTransactions.isEmpty()) {
+            recurringTransactionRepository.deleteAll(recurringTransactions);
+        }
+
+        List<SavingGoal> savingGoals = savingGoalRepository.findByUserId(id);
+        if (!savingGoals.isEmpty()) {
+            savingGoalRepository.deleteAll(savingGoals);
+        }
+
+        List<Debt> debts = debtRepository.findByUserIdOrderByStatusAscDueDateAsc(id);
+        if (!debts.isEmpty()) {
+            debtRepository.deleteAll(debts);
+        }
+
+        List<Wallet> wallets = walletRepository.findByUserId(id);
+        if (!wallets.isEmpty()) {
+            walletRepository.deleteAll(wallets);
+        }
+
+        List<Category> categories = categoryRepository.findByUserId(id);
+        if (!categories.isEmpty()) {
+            categoryRepository.deleteAll(categories);
+        }
+
+        userRepository.delete(user);
+        auditService.logAdminAction("DELETE_USER", "User " + user.getEmail() + " deleted by admin", id.toString());
+    }
+
     // ==================== SYSTEM OVERVIEW ====================
 
     public AdminOverviewDTO getOverview() {

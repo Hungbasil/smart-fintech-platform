@@ -16,6 +16,7 @@ import java.util.UUID;
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
 
         List<Transaction> findTop10ByWalletUserIdOrderByTransactionDateDesc(UUID userId);
+        List<Transaction> findByWalletUserId(UUID userId);
 
         boolean existsByWalletId(UUID walletId);
         boolean existsByCategoryId(UUID categoryId);

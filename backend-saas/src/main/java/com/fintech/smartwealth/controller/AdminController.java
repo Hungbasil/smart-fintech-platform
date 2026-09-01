@@ -71,6 +71,23 @@ public class AdminController {
         adminService.changeUserRole(id, request);
     }
 
+    /**
+     * Update user details from admin dashboard
+     */
+    @PutMapping("/users/{id}")
+    public UserDTO updateUser(@PathVariable UUID id, @RequestBody UpdateUserRequest request) {
+        return adminService.updateUser(id, request);
+    }
+
+    /**
+     * Delete a user account from admin dashboard
+     */
+    @DeleteMapping("/users/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteUser(@PathVariable UUID id) {
+        adminService.deleteUser(id);
+    }
+
     // ==================== SYSTEM OVERVIEW ====================
 
     /**
