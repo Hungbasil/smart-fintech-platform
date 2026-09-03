@@ -23,6 +23,7 @@ import {
   Card,
   CardHeader,
   CardBody,
+  PageState,
   SkeletonTable,
 } from "../components";
 import api from "../services/api";
@@ -577,7 +578,7 @@ export const Transactions: React.FC = () => {
       </div>
     );
   }
-  if (error) return <div className="p-8 text-red-600">Error: {error}</div>;
+  if (error) return <PageState error={error} onRetry={() => setReloadToken((value) => value + 1)} />;
 
   return (
     <div>
@@ -844,12 +845,12 @@ export const Transactions: React.FC = () => {
         </CardBody>
       </Card>
       {isCreateOpen && (
-        <div className="fixed inset-0 z-40 flex items-end justify-center bg-[#17212b]/35 p-0 backdrop-blur-[2px] sm:items-center sm:p-4">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#17212b]/35 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur-[2px]">
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="create-transaction-title"
-            className="w-full max-w-[520px] rounded-t-2xl bg-white p-6 shadow-2xl sm:rounded-2xl"
+            className="max-h-[calc(100svh-2rem)] w-full max-w-[520px] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"
           >
             <div className="mb-6 flex items-start justify-between">
               <div>
@@ -1080,12 +1081,12 @@ export const Transactions: React.FC = () => {
         </div>
       )}
       {isTransferOpen && (
-        <div className="fixed inset-0 z-40 flex items-end justify-center bg-[#17212b]/35 p-0 backdrop-blur-[2px] sm:items-center sm:p-4">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#17212b]/35 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur-[2px]">
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="transfer-title"
-            className="w-full max-w-[520px] rounded-t-2xl bg-white p-6 shadow-2xl sm:rounded-2xl"
+            className="max-h-[calc(100svh-2rem)] w-full max-w-[520px] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"
           >
             <div className="mb-6 flex items-start justify-between">
               <div>

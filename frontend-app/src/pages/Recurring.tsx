@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { CalendarClock, Pencil, Plus, Trash2, X } from 'lucide-react';
 import api, { updateRecurringTransaction } from '../services/api';
-import { Card, CardBody, CardHeader } from '../components';
+import { Card, CardBody, CardHeader, PageState } from '../components';
 import { currency } from '../services/format';
 import { getApiErrorMessage, toast } from '../services/notifications';
 
@@ -76,8 +76,7 @@ export const Recurring: React.FC = () => {
     }
   };
 
-  if (loading) return <div className="p-8">Loading...</div>;
-  if (error) return <div className="p-8 text-red-600">Error: {error}</div>;
+  if (loading || error) return <PageState loading={loading} error={error} loadingLabel="Loading recurring payments" />;
 
   return <div>
     <div className="mb-8"><div className="eyebrow">Automated money movement</div><h1 className="page-title">Recurring transactions</h1><p className="page-subtitle">Automatically record salary, rent and subscriptions each month.</p></div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Check, Pencil, Plus, Target, Trash2, X } from 'lucide-react';
-import { Card, CardBody, CardHeader } from '../components';
+import { Card, CardBody, CardHeader, PageState } from '../components';
 import { addSavingGoalFunds, createSavingGoal, deleteSavingGoal, getSavingGoals, type SavingGoal, updateSavingGoal } from '../services/api';
 import { currency } from '../services/format';
 import { getApiErrorMessage, toast } from '../services/notifications';
@@ -69,8 +69,7 @@ export const SavingGoals: React.FC = () => {
     catch (err) { toast.error(getApiErrorMessage(err, 'Unable to delete saving goal')); }
   };
 
-  if (loading) return <div className="p-8">Loading...</div>;
-  if (error) return <div className="rounded-xl bg-[#fff1ef] p-4 text-sm font-semibold text-[#c25344]">{error}</div>;
+  if (loading || error) return <PageState loading={loading} error={error} loadingLabel="Loading saving goals" />;
   const totalTarget = goals.reduce((sum, goal) => sum + goal.targetAmount, 0);
   const totalCurrent = goals.reduce((sum, goal) => sum + goal.currentAmount, 0);
 

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ArrowDownRight, ArrowUpRight, Bitcoin, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react';
-import { Card, CardBody, CardHeader } from '../components';
+import { Card, CardBody, CardHeader, PageState } from '../components';
 import { createInvestment, deleteInvestment, getInvestments, getMarketCandles, getMarketPrices, updateInvestment, type Investment, type InvestmentRequest, type MarketCandle, type MarketPrice } from '../services/api';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { currency } from '../services/format';
@@ -116,8 +116,7 @@ export const Investments: React.FC = () => {
 
   const removeFromWatchlist = (symbol: string) => setWatchlist((current) => current.filter((item) => item !== symbol));
 
-  if (loading) return <div className="p-8">Loading...</div>;
-  if (error) return <div className="rounded-xl bg-[#fff1ef] p-4 text-sm font-semibold text-[#c25344]">{error}</div>;
+  if (loading || error) return <PageState loading={loading} error={error} loadingLabel="Loading investments" />;
   const totalCost = investments.reduce((sum, item) => sum + item.quantity * item.buyPrice, 0);
   const totalValue = investments.reduce((sum, item) => sum + item.quantity * item.currentPrice, 0);
   const totalProfit = totalValue - totalCost;

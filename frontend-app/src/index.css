@@ -43,6 +43,15 @@ body {
   background: var(--canvas);
 }
 
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
 a {
   color: inherit;
   transition: all 200ms ease-out;
@@ -136,6 +145,17 @@ select {
 
 .toast-enter {
   animation: toast-slide 300ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 .toast-exit {
@@ -432,11 +452,13 @@ select {
   }
   .auth-form-zone {
     min-height: 100svh;
-    padding: 32px 20px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: max(24px, env(safe-area-inset-top)) 16px max(32px, env(safe-area-inset-bottom));
   }
   .auth-mobile-brand {
     display: block;
-    margin: 0 auto 42px;
+    margin: 0 auto 32px;
   }
   .auth-mobile-brand img {
     display: block;
@@ -448,6 +470,8 @@ select {
     font-size: 34px;
   }
   .auth-card {
+    width: 100%;
+    box-sizing: border-box;
     padding: 24px 20px;
   }
 }

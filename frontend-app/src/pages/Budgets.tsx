@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Pencil, Plus, Target, Trash2, X } from 'lucide-react';
-import { Card, CardBody, CardHeader } from '../components';
+import { Card, CardBody, CardHeader, PageState } from '../components';
 import api, { deleteBudget, getBudgets, saveBudget } from '../services/api';
 import { currency } from '../services/format';
 import { getApiErrorMessage, toast } from '../services/notifications';
@@ -60,8 +60,7 @@ export const Budgets: React.FC = () => {
     catch (err) { toast.error(getApiErrorMessage(err, 'Unable to remove budget')); }
   };
 
-  if (loading) return <div className="p-8">Loading...</div>;
-  if (error) return <div className="p-8 text-red-600">Error: {error}</div>;
+  if (loading || error) return <PageState loading={loading} error={error} loadingLabel="Loading budgets" />;
 
   return <div>
     {budgets.length > 0 && <div className="mb-4 flex flex-wrap gap-2">{budgets.map((budget) => <button key={`edit-${budget.id}`} type="button" onClick={() => { setCategoryId(budget.categoryId); setAmount(String(budget.budgetAmount)); setIsModalOpen(true); }} className="inline-flex items-center gap-2 rounded-lg border border-[#e3ebe8] bg-white px-3 py-2 text-xs font-bold text-[#71808c] hover:bg-[#e4f4f0] hover:text-[#087f74]"><Pencil size={14} />Edit</button>)}</div>}

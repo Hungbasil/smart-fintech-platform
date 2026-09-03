@@ -1,6 +1,6 @@
 import React from "react";
 
-const GOOGLE_AUTH_URL = "http://localhost:8080/oauth2/authorization/google";
+const GOOGLE_AUTH_URL = `${import.meta.env.VITE_API_BASE_URL?.replace(/\/api\/v1\/?$/, '') || window.location.origin}/oauth2/authorization/google`;
 
 export const GoogleLoginButton: React.FC = () => (
   <button

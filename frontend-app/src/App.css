@@ -23,8 +23,25 @@
 .sidebar-collapsed > div:last-child > button { justify-content: center; padding-left: 0; padding-right: 0; }
 
 @media (max-width: 767px) {
-  .app-content { width: min(100% - 32px, 620px); padding: 24px 0 92px; }
+  .app-content { width: min(100% - 32px, 620px); padding: 24px 0 calc(92px + env(safe-area-inset-bottom)); }
   .surface-pad { padding: 17px; }
+
+  .app-main > .fixed.bottom-0 {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Keep data-entry dialogs centered above the mobile navigation. */
+  .fixed.inset-0.z-40.flex.items-end.justify-center {
+    align-items: center !important;
+    padding: 1rem !important;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  .fixed.inset-0.z-40.flex.items-end.justify-center > [role='dialog'] {
+    max-height: calc(100svh - 2rem - env(safe-area-inset-bottom));
+    overflow-y: auto;
+    border-radius: 1rem !important;
+  }
 }
 
 @media (max-width: 767px) {

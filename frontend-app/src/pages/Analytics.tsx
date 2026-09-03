@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { Download } from 'lucide-react';
-import { Card, CardHeader, CardBody } from '../components';
+import { Card, CardHeader, CardBody, PageState } from '../components';
 import api, { getAnalyticsCategories, getAnalyticsMonthly, getAnalyticsSummary, type AnalyticsSummary } from '../services/api';
 import { currency } from '../services/format';
 import { getApiErrorMessage, toast } from '../services/notifications';
@@ -68,8 +68,7 @@ export const Analytics: React.FC = () => {
     }
   };
 
-  if (loading) return <div className="p-8">Loading...</div>;
-  if (error) return <div className="p-8 text-red-600">Error: {error}</div>;
+  if (loading || error) return <PageState loading={loading} error={error} loadingLabel="Loading analytics" />;
 
   return (
     <div className="animate-fade-in">
