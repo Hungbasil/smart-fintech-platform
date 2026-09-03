@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
+        boolean existsByImportFingerprintAndWalletUserId(String importFingerprint, UUID userId);
 
         List<Transaction> findTop10ByWalletUserIdOrderByTransactionDateDesc(UUID userId);
         List<Transaction> findByWalletUserId(UUID userId);
@@ -206,6 +207,16 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
                                 String getMonth();
                                 BigDecimal getAmount();
                 }
+
+                                                                @Query(value = """
+                                                                                                                                SELECT COALESCE(SUM(t.amount), 0)
+                                                                                                                                FROM transactions t JOIN wallets w ON w.id = t.wallet_id JOIN categories c ON c.id = t.category_id
+                                                                                                                                WHERE UPPER(c.type) = 'INCOME' AND t.transaction_type <> 'TRANSFER'
+                                                                                                                                        AND w.user_id = :userId AND t.transaction_date >= :fromDate AND t.transaction_date < :toDate
+                                                                                                                                """, nativeQuery = true)
+                                                                BigDecimal sumIncomeByUserBetween(@Param("userId") UUID userId,
+                                                                                                                                                                                                        @Param("fromDate") LocalDateTime fromDate,
+                                                                                                                                                                                                        @Param("toDate") LocalDateTime toDate);
 
                 @Query(value = """
                                                 SELECT TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM') AS month,

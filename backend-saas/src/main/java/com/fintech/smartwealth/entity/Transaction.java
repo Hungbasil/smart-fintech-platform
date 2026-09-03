@@ -31,6 +31,9 @@ public class Transaction {
     @Column(name = "transaction_type", nullable = false)
     private String transactionType = "STANDARD";
 
+    @Column(name = "import_fingerprint", length = 64)
+    private String importFingerprint;
+
     @ManyToOne
     @JoinColumn(name = "wallet_id", nullable = false)
     private Wallet wallet;

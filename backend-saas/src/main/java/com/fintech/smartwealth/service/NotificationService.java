@@ -1,14 +1,24 @@
 package com.fintech.smartwealth.service;
 
+import com.fintech.smartwealth.entity.Notification;
+import com.fintech.smartwealth.entity.User;
+import com.fintech.smartwealth.repository.NotificationRepository;
+import com.fintech.smartwealth.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.io.IOException;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
+@RequiredArgsConstructor
 public class NotificationService {
+    private final NotificationRepository notificationRepository;
+    private final UserRepository userRepository;
     private final ConcurrentHashMap<UUID, SseEmitter> emitters = new ConcurrentHashMap<>();
 
     public SseEmitter subscribe(UUID userId) {
@@ -31,6 +41,14 @@ public class NotificationService {
     }
 
     public void sendNotification(UUID userId, String message) {
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) return;
+        Notification notification = new Notification();
+        notification.setUser(user);
+        notification.setMessage(message);
+        notification.setType("ALERT");
+        notificationRepository.save(notification);
+
         SseEmitter emitter = emitters.get(userId);
         if (emitter == null) {
             return;
@@ -41,6 +59,10 @@ public class NotificationService {
             removeIfCurrent(userId, emitter);
             emitter.completeWithError(exception);
         }
+    }
+
+    public Page<Notification> findForUser(UUID userId, Pageable pageable) {
+        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
     }
 
     private void removeIfCurrent(UUID userId, SseEmitter emitter) {

@@ -2,10 +2,12 @@ package com.fintech.smartwealth.dto;
 
 public class AuthResponse {
     private String token;
+    private String refreshToken;
     private UserSummary user;
 
-    public AuthResponse(String token, UserSummary user) {
+    public AuthResponse(String token, String refreshToken, UserSummary user) {
         this.token = token;
+        this.refreshToken = refreshToken;
         this.user = user;
     }
 
@@ -24,4 +26,7 @@ public class AuthResponse {
     public void setUser(UserSummary user) {
         this.user = user;
     }
+
+    public String getRefreshToken() { return refreshToken; }
+    public void setRefreshToken(String refreshToken) { this.refreshToken = refreshToken; }
 }

@@ -6,6 +6,8 @@ import com.fintech.smartwealth.dto.RegisterRequest;
 import com.fintech.smartwealth.dto.UserSummary;
 import com.fintech.smartwealth.entity.Role;
 import com.fintech.smartwealth.entity.User;
+import com.fintech.smartwealth.entity.RefreshSession;
+import com.fintech.smartwealth.repository.RefreshSessionRepository;
 import com.fintech.smartwealth.repository.UserRepository;
 import com.fintech.smartwealth.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +17,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
+import java.util.Base64;
+import java.util.HexFormat;
 import java.util.Locale;
 
 @Service
@@ -25,6 +32,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final OtpService otpService;
+    private final RefreshSessionRepository refreshSessionRepository;
+    private final SecureRandom secureRandom = new SecureRandom();
 
     public AuthResponse register(RegisterRequest request) {
         String normalizedEmail = normalizeEmail(request.getEmail());
@@ -110,9 +119,44 @@ public class AuthService {
         return false;
     }
 
-    private AuthResponse issueToken(User user) {
+    public AuthResponse issueToken(User user) {
         String token = jwtTokenProvider.createToken(user);
-        return new AuthResponse(token, new UserSummary(user.getId(), user.getFullName(), user.getEmail()));
+        byte[] bytes = new byte[48];
+        secureRandom.nextBytes(bytes);
+        String refreshToken = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        RefreshSession session = new RefreshSession();
+        session.setUser(user);
+        session.setTokenHash(hash(refreshToken));
+        session.setExpiresAt(LocalDateTime.now().plusDays(30));
+        session.setDeviceName("Web browser");
+        refreshSessionRepository.save(session);
+        return new AuthResponse(token, refreshToken, new UserSummary(user.getId(), user.getFullName(), user.getEmail()));
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public AuthResponse refresh(String refreshToken) {
+        RefreshSession session = refreshSessionRepository.findByTokenHash(hash(refreshToken))
+                .filter(item -> item.getRevokedAt() == null && item.getExpiresAt().isAfter(LocalDateTime.now()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
+        session.setRevokedAt(LocalDateTime.now());
+        refreshSessionRepository.save(session);
+        return issueToken(session.getUser());
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void revoke(String refreshToken) {
+        refreshSessionRepository.findByTokenHash(hash(refreshToken)).ifPresent(session -> {
+            session.setRevokedAt(LocalDateTime.now());
+            refreshSessionRepository.save(session);
+        });
+    }
+
+    private String hash(String value) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable", exception);
+        }
     }
 
     private String normalizeEmail(String email) {

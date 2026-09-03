@@ -5,6 +5,9 @@ import java.util.List;
 
 public record PredictiveAnalyticsResponse(
         BigDecimal predictedAmount,
+        BigDecimal predictedIncome,
+        BigDecimal currentBalance,
+        BigDecimal projectedBalance,
         List<HistoricalExpense> historicalData,
         String trend
 ) {

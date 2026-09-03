@@ -35,6 +35,17 @@ public class AuthController {
         return authService.login(request);
     }
 
+    @PostMapping("/refresh")
+    public AuthResponse refresh(@RequestBody Map<String, String> request) {
+        return authService.refresh(request.getOrDefault("refreshToken", ""));
+    }
+
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void logout(@RequestBody Map<String, String> request) {
+        authService.revoke(request.getOrDefault("refreshToken", ""));
+    }
+
     @PostMapping("/verify-registration")
     public Map<String, String> verifyRegistration(@RequestBody OtpRequest request) {
         authService.verifyRegistration(request.email(), request.otp());

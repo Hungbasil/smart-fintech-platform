@@ -14,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,6 +25,7 @@ public class RecurringTransactionService {
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final TransactionRepository transactionRepository;
+    private final RecurringTransactionExecutionRepository executionRepository;
     private final SecurityUtils securityUtils;
 
     public List<RecurringTransactionResponse> findAll() { return recurringRepository.findByUserId(securityUtils.getCurrentUserId()).stream().map(this::response).toList(); }
@@ -42,15 +44,24 @@ public class RecurringTransactionService {
 
     @Scheduled(cron = "0 5 0 * * *")
     @Transactional public void processDueTransactions() {
-        LocalDate today = LocalDate.now(); LocalDate monthStart = today.withDayOfMonth(1);
+        LocalDate today = LocalDate.now();
+        String executionMonth = YearMonth.from(today).toString();
         for (RecurringTransaction item : recurringRepository.findByActiveTrue()) {
-            if (item.getDayOfMonth() > today.getDayOfMonth() || (item.getLastProcessed() != null && !item.getLastProcessed().isBefore(monthStart))) continue;
+            int effectiveDay = Math.min(item.getDayOfMonth(), YearMonth.from(today).lengthOfMonth());
+            if (effectiveDay > today.getDayOfMonth()
+                    || executionRepository.existsByRecurringTransactionIdAndExecutionMonth(item.getId(), executionMonth)) continue;
             BigDecimal delta = "EXPENSE".equalsIgnoreCase(item.getCategory().getType()) ? item.getAmount().negate() : item.getAmount();
             BigDecimal balance = item.getWallet().getBalance().add(delta);
             if (balance.compareTo(BigDecimal.ZERO) < 0) continue;
             item.getWallet().setBalance(balance);
             Transaction transaction = new Transaction(); transaction.setAmount(item.getAmount()); transaction.setDescription(item.getDescription()); transaction.setTransactionDate(LocalDateTime.now()); transaction.setWallet(item.getWallet()); transaction.setCategory(item.getCategory());
-            transactionRepository.save(transaction); item.setLastProcessed(today); recurringRepository.save(item); walletRepository.save(item.getWallet());
+            Transaction saved = transactionRepository.save(transaction);
+            RecurringTransactionExecution execution = new RecurringTransactionExecution();
+            execution.setRecurringTransaction(item);
+            execution.setExecutionMonth(executionMonth);
+            execution.setTransaction(saved);
+            executionRepository.save(execution);
+            item.setLastProcessed(today); recurringRepository.save(item); walletRepository.save(item.getWallet());
         }
     }
 

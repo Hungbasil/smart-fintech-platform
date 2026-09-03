@@ -5,6 +5,7 @@ import com.fintech.smartwealth.dto.AnalyticsMonthlyResponse;
 import com.fintech.smartwealth.dto.AnalyticsSummaryResponse;
 import com.fintech.smartwealth.dto.PredictiveAnalyticsResponse;
 import com.fintech.smartwealth.repository.TransactionRepository;
+import com.fintech.smartwealth.repository.WalletRepository;
 import com.fintech.smartwealth.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
@@ -25,6 +26,7 @@ public class AnalyticsService {
 
     private final TransactionRepository transactionRepository;
     private final SecurityUtils securityUtils;
+    private final WalletRepository walletRepository;
 
     @Cacheable(value = "user_analytics", key = "'summary:' + @securityUtils.getCurrentUserId() + ':' + #walletId + ':' + #fromDate + ':' + #toDate", condition = "!@securityUtils.isAdmin()")
     public AnalyticsSummaryResponse getSummary(UUID walletId, LocalDateTime fromDate, LocalDateTime toDate) {
@@ -78,7 +80,13 @@ public class AnalyticsService {
             BigDecimal latest = historicalData.get(2).amount();
             BigDecimal previous = historicalData.get(0).amount();
             String trend = latest.compareTo(previous) > 0 ? "INCREASING" : latest.compareTo(previous) < 0 ? "DECREASING" : "STABLE";
-            return new PredictiveAnalyticsResponse(predictedAmount, historicalData, trend);
+                BigDecimal predictedIncome = transactionRepository.sumIncomeByUserBetween(userId, firstMonth.atStartOfDay(), currentMonth.atStartOfDay())
+                    .divide(BigDecimal.valueOf(3), 2, java.math.RoundingMode.HALF_UP);
+                BigDecimal currentBalance = walletRepository.findByUserId(userId).stream()
+                    .map(wallet -> wallet.getBalance() == null ? BigDecimal.ZERO : wallet.getBalance())
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+                return new PredictiveAnalyticsResponse(predictedAmount, predictedIncome, currentBalance,
+                    currentBalance.add(predictedIncome).subtract(predictedAmount), historicalData, trend);
             }
 
     private UUID currentUserId() {

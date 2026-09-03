@@ -45,6 +45,9 @@ public class User {
     @OneToMany(mappedBy = "user")
     private List<Wallet> wallets = new ArrayList<>();
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<RefreshSession> refreshSessions = new ArrayList<>();
+
     @PrePersist
     protected void onCreate() {
         if (this.createdAt == null) {

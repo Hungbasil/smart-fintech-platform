@@ -1,6 +1,12 @@
 package com.fintech.smartwealth.service;
 
+import com.fintech.smartwealth.entity.AuditLog;
+import com.fintech.smartwealth.repository.AuditLogRepository;
+import com.fintech.smartwealth.repository.UserRepository;
+import com.fintech.smartwealth.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
@@ -13,6 +19,9 @@ import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
 public class AuditService {
+    private final AuditLogRepository auditLogRepository;
+    private final UserRepository userRepository;
+    private final SecurityUtils securityUtils;
 
     /**
      * Log admin action (currently logs to application log; 
@@ -28,8 +37,21 @@ public class AuditService {
                 LocalDateTime.now()
         );
         log.info(message);
-        
-        // TODO: Persist to audit_log table for full audit trail
+        AuditLog auditLog = new AuditLog();
+        auditLog.setActionType(actionType);
+        auditLog.setDescription(description);
+        auditLog.setTargetId(targetId);
+        try {
+                auditLog.setActor(securityUtils.getAuthentication().getPrincipal() instanceof com.fintech.smartwealth.security.CustomUserDetails details
+                    ? userRepository.findById(details.getId()).orElse(null) : null);
+        } catch (RuntimeException ignored) {
+            // Login and system events can be recorded without an authenticated actor.
+        }
+        auditLogRepository.save(auditLog);
+    }
+
+    public Page<AuditLog> findAll(Pageable pageable) {
+        return auditLogRepository.findAllByOrderByCreatedAtDesc(pageable);
     }
 
     /**

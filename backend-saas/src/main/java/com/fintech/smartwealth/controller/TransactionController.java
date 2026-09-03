@@ -5,6 +5,7 @@ import com.fintech.smartwealth.dto.OcrResultDTO;
 import com.fintech.smartwealth.dto.TransactionResponse;
 import com.fintech.smartwealth.dto.TransferRequest;
 import com.fintech.smartwealth.dto.UpdateTransactionRequest;
+import com.fintech.smartwealth.dto.ImportTransactionsResponse;
 import com.fintech.smartwealth.service.TransactionService;
 import com.fintech.smartwealth.service.OcrService;
 import jakarta.validation.Valid;
@@ -66,6 +67,11 @@ public class TransactionController {
     @PostMapping(value = "/ocr", consumes = "multipart/form-data")
     public OcrResultDTO ocr(@RequestParam("file") MultipartFile file) {
         return ocrService.extract(file);
+    }
+
+    @PostMapping(value = "/import", consumes = "multipart/form-data")
+    public ImportTransactionsResponse importCsv(@RequestParam("file") MultipartFile file) {
+        return transactionService.importFile(file);
     }
 
     @PutMapping("/{id}")

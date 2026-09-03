@@ -28,6 +28,22 @@ import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.security.MessageDigest;
+import java.nio.charset.StandardCharsets;
+import java.io.InputStreamReader;
+import org.springframework.web.multipart.MultipartFile;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVRecord;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.DateUtil;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+import com.fintech.smartwealth.dto.ImportTransactionsResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -122,29 +138,159 @@ public class TransactionService {
         return toResponse(savedTransaction);
     }
 
+    @Transactional
+    public ImportTransactionsResponse importFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Import file is empty");
+        String filename = file.getOriginalFilename() == null ? "" : file.getOriginalFilename().toLowerCase();
+        if (filename.endsWith(".xlsx")) return importRows(readXlsx(file));
+        if (!filename.endsWith(".csv")) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only CSV and XLSX files are supported");
+        UUID userId = securityUtils.getCurrentUserId();
+        int imported = 0, duplicates = 0;
+        Set<String> seen = new HashSet<>();
+        List<String> errors = new ArrayList<>();
+        try {
+            try (InputStreamReader reader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8)) {
+                for (CSVRecord row : CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).get().parse(reader)) {
+                try {
+                    String description = row.get("Description").trim();
+                    BigDecimal amount = new BigDecimal(row.get("Amount").trim()).abs();
+                    LocalDateTime date = LocalDateTime.parse(row.get("Date").trim());
+                    UUID walletId = UUID.fromString(row.get("Wallet ID").trim());
+                    UUID categoryId = UUID.fromString(row.get("Category ID").trim());
+                    String fingerprint = fingerprint(userId, walletId, categoryId, amount, description, date);
+                    if (!seen.add(fingerprint) || transactionRepository.existsByImportFingerprintAndWalletUserId(fingerprint, userId)) { duplicates++; continue; }
+                    CreateTransactionRequest request = new CreateTransactionRequest();
+                    request.setDescription(description); request.setAmount(amount); request.setTransactionDate(date); request.setWalletId(walletId); request.setCategoryId(categoryId);
+                    TransactionResponse saved = create(request);
+                    transactionRepository.findById(saved.getId()).ifPresent(transaction -> { transaction.setImportFingerprint(fingerprint); transactionRepository.save(transaction); });
+                    imported++;
+                } catch (Exception exception) { errors.add("Row " + row.getRecordNumber() + ": " + exception.getMessage()); }
+                }
+            }
+        } catch (Exception exception) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unable to parse CSV file", exception); }
+        if (!errors.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Import failed: " + String.join("; ", errors));
+        return new ImportTransactionsResponse(imported, duplicates, errors);
+    }
+
+    private ImportTransactionsResponse importRows(List<String[]> rows) {
+        UUID userId = securityUtils.getCurrentUserId();
+        int imported = 0, duplicates = 0;
+        Set<String> seen = new HashSet<>();
+        List<String> errors = new ArrayList<>();
+        for (int index = 1; index < rows.size(); index++) {
+            String[] row = rows.get(index);
+            try {
+                if (row.length < 5) throw new IllegalArgumentException("Expected Date, Description, Amount, Wallet ID, Category ID");
+                String description = row[1].trim();
+                BigDecimal amount = new BigDecimal(row[2].trim()).abs();
+                LocalDateTime date = LocalDateTime.parse(row[0].trim());
+                UUID walletId = UUID.fromString(row[3].trim());
+                UUID categoryId = UUID.fromString(row[4].trim());
+                String fingerprint = fingerprint(userId, walletId, categoryId, amount, description, date);
+                if (!seen.add(fingerprint) || transactionRepository.existsByImportFingerprintAndWalletUserId(fingerprint, userId)) { duplicates++; continue; }
+                CreateTransactionRequest request = new CreateTransactionRequest();
+                request.setDescription(description); request.setAmount(amount); request.setTransactionDate(date); request.setWalletId(walletId); request.setCategoryId(categoryId);
+                TransactionResponse saved = create(request);
+                transactionRepository.findById(saved.getId()).ifPresent(transaction -> { transaction.setImportFingerprint(fingerprint); transactionRepository.save(transaction); });
+                imported++;
+            } catch (Exception exception) { errors.add("Row " + (index + 1) + ": " + exception.getMessage()); }
+        }
+        if (!errors.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Import failed: " + String.join("; ", errors));
+        return new ImportTransactionsResponse(imported, duplicates, errors);
+    }
+
+    private List<String[]> readXlsx(MultipartFile file) {
+        try (var input = file.getInputStream(); var workbook = WorkbookFactory.create(input)) {
+            Sheet sheet = workbook.getSheetAt(0);
+            DataFormatter formatter = new DataFormatter();
+            Row header = sheet.getRow(sheet.getFirstRowNum());
+            if (header == null) throw new IllegalArgumentException("XLSX header is missing");
+
+            Map<String, Integer> columns = new java.util.HashMap<>();
+            for (int column = 0; column < header.getLastCellNum(); column++) {
+                String name = formatter.formatCellValue(header.getCell(column)).trim().toLowerCase();
+                columns.put(name, column);
+            }
+            int dateColumn = requiredColumn(columns, "date", "transaction date", "transaction_date");
+            int descriptionColumn = requiredColumn(columns, "description", "desc");
+            int amountColumn = requiredColumn(columns, "amount");
+            int walletColumn = requiredColumn(columns, "wallet id", "wallet_id", "walletid");
+            int categoryColumn = requiredColumn(columns, "category id", "category_id", "categoryid");
+            List<String[]> rows = new ArrayList<>();
+            rows.add(new String[] { "Date", "Description", "Amount", "Wallet ID", "Category ID" });
+            for (int index = sheet.getFirstRowNum() + 1; index <= sheet.getLastRowNum(); index++) {
+                Row row = sheet.getRow(index);
+                if (row == null) continue;
+                String date = formatDateCell(row.getCell(dateColumn), formatter);
+                String[] values = {
+                        date,
+                        formatter.formatCellValue(row.getCell(descriptionColumn)).trim(),
+                        formatter.formatCellValue(row.getCell(amountColumn)).trim(),
+                        formatter.formatCellValue(row.getCell(walletColumn)).trim(),
+                        formatter.formatCellValue(row.getCell(categoryColumn)).trim()
+                };
+                if (java.util.Arrays.stream(values).anyMatch(value -> !value.isBlank())) rows.add(values);
+            }
+            return rows;
+        } catch (Exception exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unable to parse XLSX file", exception);
+        }
+    }
+
+    private int requiredColumn(Map<String, Integer> columns, String... names) {
+        for (String name : names) {
+            Integer index = columns.get(name);
+            if (index != null) return index;
+        }
+        throw new IllegalArgumentException("XLSX column is missing: " + names[0]);
+    }
+
+    private String formatDateCell(org.apache.poi.ss.usermodel.Cell cell, DataFormatter formatter) {
+        if (cell != null && DateUtil.isCellDateFormatted(cell)) {
+            return cell.getLocalDateTimeCellValue().toString();
+        }
+        return formatter.formatCellValue(cell).trim();
+    }
+
+    private String fingerprint(UUID userId, UUID walletId, UUID categoryId, BigDecimal amount, String description, LocalDateTime date) {
+        try { return java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest((userId + "|" + walletId + "|" + categoryId + "|" + amount.stripTrailingZeros() + "|" + description.toLowerCase() + "|" + date).getBytes(StandardCharsets.UTF_8))); }
+        catch (Exception exception) { throw new IllegalStateException("Unable to create import fingerprint", exception); }
+    }
+
     private void notifyIfAnomalousExpense(Wallet wallet,
                                           Category category,
                                           BigDecimal amount,
                                           LocalDateTime transactionDate) {
-        if (!"EXPENSE".equalsIgnoreCase(category.getType()) || amount.compareTo(new BigDecimal("500000")) <= 0) {
+        if (!"EXPENSE".equalsIgnoreCase(category.getType())) {
             return;
         }
 
         LocalDateTime fromDate = transactionDate.minusMonths(3);
         List<Transaction> history = transactionRepository.findExpenseHistoryByUserAndCategoryBetween(
                 wallet.getUser().getId(), category.getId(), fromDate, transactionDate);
-        if (history.isEmpty()) {
+        if (history.size() < 2) {
             return;
         }
 
-        BigDecimal total = history.stream()
+        List<BigDecimal> values = history.stream()
                 .map(Transaction::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal average = total.divide(BigDecimal.valueOf(history.size()), 2, java.math.RoundingMode.HALF_UP);
-        if (amount.compareTo(average.multiply(BigDecimal.valueOf(3))) > 0) {
+            .sorted()
+            .toList();
+        BigDecimal total = values.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal average = total.divide(BigDecimal.valueOf(values.size()), 2, java.math.RoundingMode.HALF_UP);
+        BigDecimal variance = values.stream()
+            .map(value -> value.subtract(average).pow(2))
+            .reduce(BigDecimal.ZERO, BigDecimal::add)
+            .divide(BigDecimal.valueOf(values.size()), 2, java.math.RoundingMode.HALF_UP);
+        BigDecimal standardDeviation = BigDecimal.valueOf(Math.sqrt(variance.doubleValue()));
+        BigDecimal median = values.size() % 2 == 0
+            ? values.get(values.size() / 2 - 1).add(values.get(values.size() / 2)).divide(BigDecimal.valueOf(2), 2, java.math.RoundingMode.HALF_UP)
+            : values.get(values.size() / 2);
+        BigDecimal threshold = average.add(standardDeviation.multiply(BigDecimal.valueOf(2))).max(median.multiply(BigDecimal.valueOf(2)));
+        if (amount.compareTo(threshold) > 0) {
             notificationService.sendNotification(wallet.getUser().getId(),
                     "Cảnh báo: Bạn vừa chi một khoản " + category.getName()
-                            + " cao bất thường so với thói quen 3 tháng qua!");
+                    + " cao bất thường so với thói quen 3 tháng qua!");
         }
     }
 

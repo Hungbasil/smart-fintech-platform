@@ -3,6 +3,8 @@ package com.fintech.smartwealth.security;
 import com.fintech.smartwealth.entity.Role;
 import com.fintech.smartwealth.entity.User;
 import com.fintech.smartwealth.repository.UserRepository;
+import com.fintech.smartwealth.service.AuthService;
+import com.fintech.smartwealth.dto.AuthResponse;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -26,7 +28,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
     private final UserRepository userRepository;
     private final ObjectProvider<PasswordEncoder> passwordEncoder;
-    private final JwtTokenProvider jwtTokenProvider;
+    private final ObjectProvider<AuthService> authService;
 
     @Value("${app.frontend-url:http://localhost:5173}")
     private String frontendUrl;
@@ -46,10 +48,11 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         User user = userRepository.findByEmail(email.trim().toLowerCase())
                 .orElseGet(() -> createUser(oauthUser, email));
-        String token = jwtTokenProvider.createToken(user);
-        String encodedToken = URLEncoder.encode(token, StandardCharsets.UTF_8);
+        AuthResponse authResponse = authService.getObject().issueToken(user);
+        String encodedToken = URLEncoder.encode(authResponse.getToken(), StandardCharsets.UTF_8);
+        String encodedRefreshToken = URLEncoder.encode(authResponse.getRefreshToken(), StandardCharsets.UTF_8);
 
-        response.sendRedirect(frontendUrl + "/oauth2/redirect?token=" + encodedToken);
+        response.sendRedirect(frontendUrl + "/oauth2/redirect?token=" + encodedToken + "&refreshToken=" + encodedRefreshToken);
     }
 
     private User createUser(OAuth2User oauthUser, String email) {
