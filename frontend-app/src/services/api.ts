@@ -172,6 +172,9 @@ export interface PredictiveHistoricalExpense {
 
 export interface PredictiveAnalytics {
   predictedAmount: number;
+  predictedIncome: number;
+  currentBalance: number;
+  projectedBalance: number;
   historicalData: PredictiveHistoricalExpense[];
   trend: 'INCREASING' | 'DECREASING' | 'STABLE';
 }
@@ -368,13 +371,28 @@ api.interceptors.request.use(
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     const isAuthRequest = error.config?.url?.startsWith('/auth/');
     const serverMessage = error.response?.data?.message;
     const hasInvalidToken = serverMessage === 'Invalid or expired token';
     const hasStoredToken = Boolean(localStorage.getItem('authToken'));
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (error.response?.status === 401 && !isAuthRequest && refreshToken && !error.config?._refreshAttempted) {
+      try {
+        const refreshResponse = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
+        localStorage.setItem('authToken', refreshResponse.data.token);
+        if (refreshResponse.data.refreshToken) localStorage.setItem('refreshToken', refreshResponse.data.refreshToken);
+        error.config._refreshAttempted = true;
+        error.config.headers.set('Authorization', `Bearer ${refreshResponse.data.token}`);
+        error.config.headers.set('X-Auth-Token', `Bearer ${refreshResponse.data.token}`);
+        return api.request(error.config);
+      } catch {
+        localStorage.removeItem('refreshToken');
+      }
+    }
     if (error.response?.status === 401 && !isAuthRequest && (hasInvalidToken || !hasStoredToken)) {
       localStorage.removeItem('authToken');
+      localStorage.removeItem('refreshToken');
       localStorage.removeItem('authUser');
       toast.error('Your session has expired. Please sign in again.');
       window.location.href = '/login';

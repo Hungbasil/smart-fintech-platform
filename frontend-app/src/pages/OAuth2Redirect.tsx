@@ -9,13 +9,14 @@ export const OAuth2Redirect: React.FC = () => {
 
   useEffect(() => {
     const token = searchParams.get("token");
+    const refreshToken = searchParams.get("refreshToken");
     if (!token) {
       toast.error("Google sign-in could not be completed.");
       navigate("/login", { replace: true });
       return;
     }
 
-    auth.completeOAuthLogin(token);
+    auth.completeOAuthLogin(token, refreshToken || undefined);
     toast.success("Signed in successfully");
     navigate("/overview", { replace: true });
   }, [navigate, searchParams]);

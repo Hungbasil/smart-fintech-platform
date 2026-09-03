@@ -27,15 +27,17 @@ export const Analytics: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
         setLoading(true);
         const [summaryResponse, categoryResponse, monthlyResponse] = await Promise.all([
-          getAnalyticsSummary(),
-          getAnalyticsCategories(),
-          getAnalyticsMonthly(),
+          getAnalyticsSummary({ fromDate: dateFrom || undefined, toDate: dateTo || undefined }),
+          getAnalyticsCategories({ fromDate: dateFrom || undefined, toDate: dateTo || undefined }),
+          getAnalyticsMonthly({ fromDate: dateFrom || undefined, toDate: dateTo || undefined }),
         ]);
         setSummary(summaryResponse.data);
         setCategoryData(categoryResponse.data.map((item, index) => ({ ...item, color: palette[index % palette.length] })));
@@ -48,7 +50,7 @@ export const Analytics: React.FC = () => {
     };
 
     fetchAnalytics();
-  }, []);
+  }, [dateFrom, dateTo]);
 
   const exportPdf = async () => {
     try {
@@ -72,7 +74,13 @@ export const Analytics: React.FC = () => {
 
   return (
     <div className="animate-fade-in">
-      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="eyebrow">Patterns and insights</div><h1 className="page-title">Analytics</h1><p className="page-subtitle">Aggregated directly by PostgreSQL for the complete transaction history.</p></div><button type="button" onClick={exportPdf} disabled={exporting} className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#087f74] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#075c57] disabled:cursor-not-allowed disabled:opacity-50"><Download size={17} />{exporting ? 'Preparing PDF...' : 'Download PDF report'}</button></div>
+      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="eyebrow">Patterns and insights</div><h1 className="page-title">Analytics</h1><p className="page-subtitle">Aggregated directly by PostgreSQL for the selected period.</p></div><button type="button" onClick={exportPdf} disabled={exporting} className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#087f74] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#075c57] disabled:cursor-not-allowed disabled:opacity-50"><Download size={17} />{exporting ? 'Preparing PDF...' : 'Download PDF report'}</button></div>
+
+      <div className="mb-7 flex flex-col gap-3 rounded-2xl border border-[#e3ebe8] bg-white p-4 shadow-sm sm:flex-row sm:items-end">
+        <div className="flex-1"><label htmlFor="analytics-from" className="mb-1.5 block text-xs font-bold text-[#71808c]">From</label><input id="analytics-from" type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74] focus:ring-2 focus:ring-[#e4f4f0]" /></div>
+        <div className="flex-1"><label htmlFor="analytics-to" className="mb-1.5 block text-xs font-bold text-[#71808c]">To</label><input id="analytics-to" type="date" value={dateTo} min={dateFrom || undefined} onChange={(event) => setDateTo(event.target.value)} className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74] focus:ring-2 focus:ring-[#e4f4f0]" /></div>
+        <button type="button" onClick={() => { setDateFrom(''); setDateTo(''); }} disabled={!dateFrom && !dateTo} className="rounded-xl border border-[#e3ebe8] px-4 py-2.5 text-sm font-bold text-[#71808c] transition hover:bg-[#f4f7f6] disabled:cursor-not-allowed disabled:opacity-50">All time</button>
+      </div>
 
       <div className="mb-7 grid grid-cols-1 gap-4 md:grid-cols-3">
         {[

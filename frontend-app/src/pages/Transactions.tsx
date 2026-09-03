@@ -516,6 +516,14 @@ export const Transactions: React.FC = () => {
     event.target.value = "";
     if (!file) return;
     try {
+      if (file.name.toLowerCase().endsWith(".xlsx")) {
+        const formData = new FormData();
+        formData.append("file", file);
+        const response = await api.post<{ imported: number; skippedDuplicates: number }>("/transactions/import", formData);
+        setReloadToken((value) => value + 1);
+        toast.success(`${response.data.imported} imported, ${response.data.skippedDuplicates} duplicates skipped`);
+        return;
+      }
       const text = await file.text();
       const [headerLine, ...lines] = text.split(/\r?\n/).filter(Boolean);
       const headers = headerLine
@@ -543,9 +551,10 @@ export const Transactions: React.FC = () => {
           .map((value) =>
             value.trim().replace(/^"|"$/g, "").replace(/""/g, '"'),
           ) || [];
+      const importRows = [];
       for (const line of lines) {
         const values = parseLine(line);
-        await api.post("/transactions", {
+        importRows.push({
           amount: Math.abs(Number(values[indexes.amount])),
           description: values[indexes.description] || "Imported transaction",
           transactionDate:
@@ -554,10 +563,17 @@ export const Transactions: React.FC = () => {
           categoryId: values[indexes.categoryId],
         });
       }
+      const payload = new Blob([
+        ["Date,Description,Amount,Wallet ID,Category ID", ...importRows.map((row) =>
+          [row.transactionDate, row.description, row.amount, row.walletId, row.categoryId]
+            .map((value) => `"${String(value).replace(/"/g, '""')}"`).join(","))].join("\n"),
+      ], { type: "text/csv" });
+      const response = await api.post<{ imported: number; skippedDuplicates: number }>("/transactions/import", payload, {
+        headers: { "Content-Type": "multipart/form-data" },
+        transformRequest: () => { const formData = new FormData(); formData.append("file", payload, file.name); return formData; },
+      });
       setReloadToken((value) => value + 1);
-      toast.success(
-        `${lines.length} transaction${lines.length === 1 ? "" : "s"} imported`,
-      );
+      toast.success(`${response.data.imported} imported, ${response.data.skippedDuplicates} duplicates skipped`);
     } catch (err) {
       toast.error(getApiErrorMessage(err, "Unable to import CSV"));
     }
@@ -636,7 +652,7 @@ export const Transactions: React.FC = () => {
           <input
             ref={importInputRef}
             type="file"
-            accept=".csv,text/csv"
+            accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             onChange={importTransactions}
             className="hidden"
           />

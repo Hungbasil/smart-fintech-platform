@@ -2,6 +2,7 @@ import api from './api';
 import type { AxiosResponse } from 'axios';
 
 const TOKEN_KEY = 'authToken';
+const REFRESH_TOKEN_KEY = 'refreshToken';
 const USER_KEY = 'authUser';
 
 export interface AuthUser {
@@ -73,6 +74,7 @@ export async function login(payload: LoginRequest): Promise<AxiosResponse<any>> 
   if (token) {
     localStorage.setItem(TOKEN_KEY, token);
   }
+  if (res.data?.refreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, res.data.refreshToken);
   if (res.data?.user) {
     const decodedRole = token ? decodeJwtPayload(token)?.role : null;
     const user = {
@@ -95,12 +97,16 @@ export const forgotPassword = (email: string) => api.post('/auth/forgot-password
 export const resetPassword = (payload: ResetPasswordRequest) => api.post('/auth/reset-password', payload);
 
 export function logout() {
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  if (refreshToken) void api.post('/auth/logout', { refreshToken }).catch(() => undefined);
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
 }
 
-export function completeOAuthLogin(token: string) {
+export function completeOAuthLogin(token: string, refreshToken?: string) {
   localStorage.setItem(TOKEN_KEY, token);
+  if (refreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
 
   const claims = decodeJwtPayload(token) as {
     userId?: string;
