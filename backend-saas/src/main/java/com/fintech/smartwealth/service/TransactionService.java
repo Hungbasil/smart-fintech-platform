@@ -141,6 +141,9 @@ public class TransactionService {
     @Transactional
     public ImportTransactionsResponse importFile(MultipartFile file) {
         if (file == null || file.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Import file is empty");
+        if (file.getSize() > 10 * 1024 * 1024) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Import file must not exceed 10 MB");
+        }
         String filename = file.getOriginalFilename() == null ? "" : file.getOriginalFilename().toLowerCase();
         if (filename.endsWith(".xlsx")) return importRows(readXlsx(file));
         if (!filename.endsWith(".csv")) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only CSV and XLSX files are supported");

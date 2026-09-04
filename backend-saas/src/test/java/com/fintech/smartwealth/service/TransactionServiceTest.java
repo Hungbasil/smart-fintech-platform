@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.mock.web.MockMultipartFile;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -71,6 +72,16 @@ class TransactionServiceTest {
         transactionService.findAll(null, null, null, null, null, null, pageable);
 
         verify(transactionRepository).findAllByWalletUserId(userId, "", pageable);
+    }
+
+    @Test
+    void importFileShouldRejectFilesOverTenMegabytes() {
+        byte[] oversizedContent = new byte[10 * 1024 * 1024 + 1];
+        MockMultipartFile file = new MockMultipartFile("file", "transactions.csv", "text/csv", oversizedContent);
+
+        assertThatThrownBy(() -> transactionService.importFile(file))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .hasMessageContaining("must not exceed 10 MB");
     }
 
     @Test
