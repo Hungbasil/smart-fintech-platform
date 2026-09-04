@@ -362,7 +362,6 @@ api.interceptors.request.use(
     const isAuthRequest = config.url?.startsWith('/auth/');
     if (token && !isAuthRequest) {
       config.headers.set('Authorization', `Bearer ${token}`);
-      config.headers.set('X-Auth-Token', `Bearer ${token}`);
     }
     return config;
   },
@@ -384,7 +383,6 @@ api.interceptors.response.use(
         if (refreshResponse.data.refreshToken) localStorage.setItem('refreshToken', refreshResponse.data.refreshToken);
         error.config._refreshAttempted = true;
         error.config.headers.set('Authorization', `Bearer ${refreshResponse.data.token}`);
-        error.config.headers.set('X-Auth-Token', `Bearer ${refreshResponse.data.token}`);
         return api.request(error.config);
       } catch {
         localStorage.removeItem('refreshToken');

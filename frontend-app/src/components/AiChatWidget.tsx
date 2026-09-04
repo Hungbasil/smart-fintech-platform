@@ -177,6 +177,7 @@ export function AiChatWidget() {
 
       <button
         type="button"
+        data-tour="ai-assistant"
         aria-label={isOpen ? 'Close AI assistant' : 'Open AI assistant'}
         title={isOpen ? 'Close AI assistant' : 'Open AI assistant'}
         onClick={() => setIsOpen((open) => !open)}

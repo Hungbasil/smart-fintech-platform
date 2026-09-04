@@ -89,6 +89,52 @@ select {
   }
 }
 
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes onboarding-card-in {
+  from { opacity: 0; transform: translateY(14px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animated-guide-border {
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: 4px;
+  isolation: isolate;
+  border-radius: 14px;
+}
+
+.animated-guide-border::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  box-sizing: border-box;
+  padding: 4px;
+  background: conic-gradient(from 0deg, transparent 70%, #087f74 100%);
+  content: '';
+  animation: spin 1.6s linear infinite;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+.animated-guide-border::after {
+  position: absolute;
+  z-index: 1;
+  inset: 4px;
+  border-radius: 10px;
+  background: transparent;
+  content: '';
+}
+
+/* The overlay must remain fixed while the border itself uses relative positioning. */
+.onboarding-spotlight.animated-guide-border { position: fixed; border: 0; }
+.onboarding-card { animation: onboarding-card-in 280ms cubic-bezier(.2, .75, .3, 1) both; }
+
 @keyframes fade-scale {
   from {
     opacity: 0;
@@ -135,6 +181,40 @@ select {
   animation: rise-in 420ms ease-out both;
 }
 
+@keyframes route-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.route-transition {
+  position: relative;
+  animation: route-enter 360ms cubic-bezier(.22, .75, .25, 1) both;
+  will-change: opacity, transform;
+}
+
+.route-transition::before {
+  position: absolute;
+  top: -36px;
+  left: 0;
+  width: 72px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--teal), #4fc7b8);
+  content: '';
+  animation: route-progress 520ms cubic-bezier(.22, .75, .25, 1) both;
+}
+
+@keyframes route-progress {
+  from { opacity: .9; transform: scaleX(.15); transform-origin: left; }
+  to { opacity: 0; transform: scaleX(1); transform-origin: left; }
+}
+
 .modal-enter {
   animation: fade-scale 300ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
@@ -156,6 +236,10 @@ select {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+@media (max-width: 767px) {
+  .route-transition::before { top: -24px; }
 }
 
 .toast-exit {

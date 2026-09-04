@@ -117,7 +117,7 @@ export const Dashboard: React.FC = () => {
         <Link to="/transactions" className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#087f74] px-4 py-2.5 text-sm font-bold text-white no-underline shadow-sm transition hover:bg-[#075c57]"><ArrowUpRight size={17} />Add transaction</Link>
       </div>
 
-      <div className="mb-7 grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div data-tour="dashboard-summary" className="mb-7 grid grid-cols-1 gap-4 md:grid-cols-3">
         {[
           { label: 'Total balance', value: data?.totalBalance ?? 0, valueType: 'currency', detail: 'Across all wallets', icon: WalletCards, tone: 'teal' },
           { label: 'Monthly activity', value: data?.monthlyTransactions ?? 0, valueType: 'number', detail: 'Transactions this month', icon: ReceiptText, tone: 'amber' },
@@ -142,7 +142,7 @@ export const Dashboard: React.FC = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr_1fr]">
+      <div data-tour="dashboard-activity" className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr_1fr]">
         <UiCard>
           <CardHeader><div className="flex items-start justify-between"><div><h3 className="section-title">Activity overview</h3><p className="section-caption mt-1">Transaction volume across the last six months</p></div><span className="rounded-lg bg-[#e4f4f0] px-2.5 py-1 text-[11px] font-bold text-[#087f74]">Live data</span></div></CardHeader>
           <CardBody><div className="animate-fade-in"><ResponsiveContainer width="100%" height={285}><BarChart data={chartData} barSize={12} barGap={5}><CartesianGrid vertical={false} stroke="#e8efec" /><XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#9aa7af', fontSize: 12 }} /><YAxis axisLine={false} tickLine={false} tick={{ fill: '#9aa7af', fontSize: 11 }} tickFormatter={(value) => `${Number(value) / 1000}k`} /><Tooltip cursor={{ fill: '#f4f7f6' }} formatter={(value, name) => [currency.format(Number(value)), name === 'income' ? 'Income' : 'Expenses']} contentStyle={{ border: '1px solid #e3ebe8', borderRadius: 10, boxShadow: '0 8px 20px rgba(23,33,43,.08)' }} /><Bar dataKey="income" fill="#087f74" radius={[6, 6, 2, 2]} /><Bar dataKey="expenses" fill="#d76756" radius={[6, 6, 2, 2]} /></BarChart></ResponsiveContainer></div></CardBody>
