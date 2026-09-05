@@ -28,9 +28,10 @@ type QuickAddTransactionProps = {
   open: boolean;
   onClose: () => void;
   onSaved?: () => void;
+  triggerRef?: React.RefObject<HTMLButtonElement | null>;
 };
 
-export const QuickAddTransaction: React.FC<QuickAddTransactionProps> = ({ open, onClose, onSaved }) => {
+export const QuickAddTransaction: React.FC<QuickAddTransactionProps> = ({ open, onClose, onSaved, triggerRef }) => {
   const [wallets, setWallets] = useState<WalletOption[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
@@ -84,6 +85,16 @@ export const QuickAddTransaction: React.FC<QuickAddTransactionProps> = ({ open, 
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open, onClose]);
 
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      triggerRef?.current?.focus();
+    };
+  }, [open, triggerRef]);
+
   if (!open) return null;
 
   const save = async (event: React.FormEvent) => {
@@ -114,10 +125,10 @@ export const QuickAddTransaction: React.FC<QuickAddTransactionProps> = ({ open, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#17212b]/35 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur-[2px]" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <div role="dialog" aria-modal="true" aria-labelledby="quick-add-title" className="w-full max-w-[460px] rounded-2xl bg-white p-5 shadow-2xl sm:p-6">
+      <div role="dialog" aria-modal="true" aria-labelledby="quick-add-title" className="max-h-[calc(100svh-2rem-env(safe-area-inset-bottom))] w-full max-w-[460px] overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl sm:p-6">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div><div className="eyebrow">Quick capture</div><h2 id="quick-add-title" className="mt-1 text-xl font-extrabold tracking-[-.04em] text-[#17212b]">Add transaction</h2><p className="mt-1 text-xs text-[#71808c]">Record a movement without leaving your current page.</p></div>
-          <button type="button" aria-label="Close quick add" title="Close" onClick={onClose} className="rounded-lg p-2 text-[#9aa7af] hover:bg-[#f4f7f6] hover:text-[#17212b]"><X size={18} /></button>
+          <button type="button" aria-label="Close quick add" title="Close" onClick={onClose} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 text-[#9aa7af] hover:bg-[#f4f7f6] hover:text-[#17212b]"><X size={18} /></button>
         </div>
         <form onSubmit={save} className="space-y-4">
           {error && <div className="rounded-xl bg-[#fff1ef] px-3 py-2.5 text-sm font-semibold text-[#c25344]">{error}</div>}

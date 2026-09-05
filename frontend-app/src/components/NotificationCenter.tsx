@@ -84,7 +84,7 @@ export const NotificationCenter: React.FC = () => {
 
   return (
     <div className="relative">
-      <button type="button" aria-label="Notifications" aria-expanded={open} onClick={() => { setOpen((value) => !value); if (!open) void loadNotifications(); }} className="relative rounded-xl p-2 text-[#71808c] transition hover:bg-[#e4f4f0] hover:text-[#087f74]">
+      <button type="button" aria-label="Notifications" aria-expanded={open} onClick={() => { setOpen((value) => !value); if (!open) void loadNotifications(); }} className="relative flex min-h-11 min-w-11 items-center justify-center rounded-xl p-2 text-[#71808c] transition hover:bg-[#e4f4f0] hover:text-[#087f74]">
         <Bell size={19} />
         {unread > 0 && <span className="absolute right-1 top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-[#d76756] px-1 text-[9px] font-extrabold text-white">{unread > 99 ? '99+' : unread}</span>}
       </button>

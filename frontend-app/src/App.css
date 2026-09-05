@@ -42,6 +42,10 @@
     overflow-y: auto;
     border-radius: 1rem !important;
   }
+
+  [role='dialog'] {
+    overscroll-behavior: contain;
+  }
 }
 
 @media (max-width: 767px) {
