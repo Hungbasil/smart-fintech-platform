@@ -9,6 +9,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import java.time.LocalDateTime;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -63,6 +64,31 @@ public class NotificationService {
 
     public Page<Notification> findForUser(UUID userId, Pageable pageable) {
         return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
+    }
+
+    public long countUnread(UUID userId) {
+        return notificationRepository.countByUserIdAndReadAtIsNull(userId);
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void markAsRead(UUID userId, UUID notificationId) {
+        if (notificationRepository.markAsRead(notificationId, userId, LocalDateTime.now()) == 0) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.NOT_FOUND, "Notification not found");
+        }
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void markAllAsRead(UUID userId) {
+        notificationRepository.markAllAsRead(userId, LocalDateTime.now());
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void delete(UUID userId, UUID notificationId) {
+        if (notificationRepository.deleteByIdAndUserId(notificationId, userId) == 0) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.NOT_FOUND, "Notification not found");
+        }
     }
 
     private void removeIfCurrent(UUID userId, SseEmitter emitter) {
