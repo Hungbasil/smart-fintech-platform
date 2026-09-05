@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom';
 import auth from '../services/auth';
 import AiChatWidget from './AiChatWidget';
 import OnboardingTour from './OnboardingTour';
 import NotificationCenter from './NotificationCenter';
-import { BarChart3, CalendarClock, ChevronDown, ChevronRight, CircleHelp, Goal, HandCoins, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, ReceiptText, ShieldCheck, Tag, Target, WalletCards, Bitcoin } from 'lucide-react';
+import QuickAddTransaction from './QuickAddTransaction';
+import { BarChart3, CalendarClock, ChevronDown, ChevronRight, CircleHelp, Goal, HandCoins, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, ReceiptText, ShieldCheck, Tag, Target, WalletCards, Bitcoin, Plus } from 'lucide-react';
 
 const navigation = [
   { label: 'Transactions', to: '/transactions', icon: ReceiptText },
@@ -23,6 +24,18 @@ export const Layout: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [debtsOpen, setDebtsOpen] = useState(location.pathname.startsWith('/debts'));
   const [tourRequest, setTourRequest] = useState(0);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setQuickAddOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   if (!auth.isAuthenticated()) {
     return <Outlet />;
@@ -74,7 +87,7 @@ export const Layout: React.FC = () => {
             <span className="text-[15px] font-extrabold text-[#17212b]">SmartFin</span>
           </div>
           <div className="hidden text-[13px] font-semibold text-[#71808c] lg:block">Personal finance workspace</div>
-          <div className="flex items-center gap-2"><NotificationCenter /><div className="relative"><button data-tour="account-menu" type="button" aria-expanded={profileOpen} onClick={() => setProfileOpen((open) => !open)} className="flex items-center gap-2 rounded-full border border-[#e3ebe8] bg-white py-1.5 pl-1.5 pr-3 text-xs font-bold text-[#17212b] shadow-sm"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#dcefeb] text-[11px] text-[#075c57]">{initials}</span>{displayName}<ChevronDown size={14} className={`text-[#9aa7af] transition-transform ${profileOpen ? 'rotate-180' : ''}`} /></button>{profileOpen && <div className="absolute right-0 top-full z-30 mt-2 w-56 rounded-xl border border-[#e3ebe8] bg-white p-2 shadow-lg"><div className="border-b border-[#edf2f0] px-3 py-2"><p className="truncate text-xs font-extrabold text-[#17212b]">{displayName}</p><p className="truncate text-[11px] text-[#9aa7af]">{user?.email}</p></div><button type="button" onClick={() => { setTourRequest((request) => request + 1); setProfileOpen(false); }} className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-bold text-[#087f74] hover:bg-[#e4f4f0]"><CircleHelp size={15} />Take a tour again</button><button type="button" onClick={() => { auth.logout(); window.location.href = '/login'; }} className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-bold text-[#71808c] hover:bg-[#fff1ef] hover:text-[#d76756]"><LogOut size={15} />Sign out</button></div>}</div></div>
+          <div className="flex items-center gap-2"><button data-tour="quick-add" type="button" aria-label="Quick add transaction" title="Quick add transaction (Ctrl/Cmd + K)" onClick={() => setQuickAddOpen(true)} className="inline-flex items-center gap-2 rounded-xl bg-[#087f74] px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#075c57]"><Plus size={16} /><span className="hidden sm:inline">Add</span></button><NotificationCenter /><div className="relative"><button data-tour="account-menu" type="button" aria-expanded={profileOpen} onClick={() => setProfileOpen((open) => !open)} className="flex items-center gap-2 rounded-full border border-[#e3ebe8] bg-white py-1.5 pl-1.5 pr-3 text-xs font-bold text-[#17212b] shadow-sm"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#dcefeb] text-[11px] text-[#075c57]">{initials}</span>{displayName}<ChevronDown size={14} className={`text-[#9aa7af] transition-transform ${profileOpen ? 'rotate-180' : ''}`} /></button>{profileOpen && <div className="absolute right-0 top-full z-30 mt-2 w-56 rounded-xl border border-[#e3ebe8] bg-white p-2 shadow-lg"><div className="border-b border-[#edf2f0] px-3 py-2"><p className="truncate text-xs font-extrabold text-[#17212b]">{displayName}</p><p className="truncate text-[11px] text-[#9aa7af]">{user?.email}</p></div><button type="button" onClick={() => { setTourRequest((request) => request + 1); setProfileOpen(false); }} className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-bold text-[#087f74] hover:bg-[#e4f4f0]"><CircleHelp size={15} />Take a tour again</button><button type="button" onClick={() => { auth.logout(); window.location.href = '/login'; }} className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-bold text-[#71808c] hover:bg-[#fff1ef] hover:text-[#d76756]"><LogOut size={15} />Sign out</button></div>}</div></div>
         </header>
         <main className="app-content">
           <div key={`${location.pathname}${location.search}`} className="route-transition">
@@ -82,6 +95,7 @@ export const Layout: React.FC = () => {
           </div>
         </main>
         <AiChatWidget />
+        <QuickAddTransaction open={quickAddOpen} onClose={() => setQuickAddOpen(false)} onSaved={() => { if (location.pathname === '/transactions') window.dispatchEvent(new CustomEvent('smartfin:transactions-refresh')); }} />
         <div data-tour="navigation" className="fixed inset-x-0 bottom-0 z-20 lg:hidden">
           {(analyticsOpen || overviewOpen || debtsOpen) && <div className={`absolute bottom-full mb-2 w-44 rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] p-2 shadow-lg [animation:rise-in_180ms_ease-out] ${debtsOpen ? 'left-[152px]' : analyticsOpen ? 'left-[80px]' : 'left-2'}`}>{overviewOpen && <><NavLink onClick={() => setOverviewOpen(false)} to="/overview" className={({ isActive }) => `block rounded-lg px-3 py-2.5 text-xs font-bold no-underline ${isActive ? 'bg-[#e4f4f0] text-[#075c57]' : 'text-[#71808c] hover:bg-[#f1f6f4]'}`}>Overview</NavLink><NavLink onClick={() => setOverviewOpen(false)} to="/investments" className={({ isActive }) => `block rounded-lg px-3 py-2.5 text-xs font-bold no-underline ${isActive ? 'bg-[#e4f4f0] text-[#075c57]' : 'text-[#71808c] hover:bg-[#f1f6f4]'}`}>Investments</NavLink></>}{analyticsOpen && <><NavLink onClick={() => setAnalyticsOpen(false)} to="/analytics/overview" className={({ isActive }) => `block rounded-lg px-3 py-2.5 text-xs font-bold no-underline ${isActive ? 'bg-[#e4f4f0] text-[#075c57]' : 'text-[#71808c] hover:bg-[#f1f6f4]'}`}>Analytics overview</NavLink><NavLink onClick={() => setAnalyticsOpen(false)} to="/analytics/predictive" className={({ isActive }) => `block rounded-lg px-3 py-2.5 text-xs font-bold no-underline ${isActive ? 'bg-[#e4f4f0] text-[#075c57]' : 'text-[#71808c] hover:bg-[#f1f6f4]'}`}>Forecast</NavLink></>}{debtsOpen && <><NavLink onClick={() => setDebtsOpen(false)} to="/debts" end className={({ isActive }) => `block rounded-lg px-3 py-2.5 text-xs font-bold no-underline ${isActive ? 'bg-[#e4f4f0] text-[#075c57]' : 'text-[#71808c] hover:bg-[#f1f6f4]'}`}>Debts Overview</NavLink><NavLink onClick={() => setDebtsOpen(false)} to="/debts/calendar" className={({ isActive }) => `block rounded-lg px-3 py-2.5 text-xs font-bold no-underline ${isActive ? 'bg-[#e4f4f0] text-[#075c57]' : 'text-[#71808c] hover:bg-[#f1f6f4]'}`}>Calendar</NavLink></>}</div>}
           <nav className="flex overflow-x-auto border-t border-[#e3ebe8] bg-[#fbfdfc]/95 px-2 py-2 backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

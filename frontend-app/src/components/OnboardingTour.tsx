@@ -20,6 +20,7 @@ const steps: TourStep[] = [
   { selector: '[data-tour="navigation"]', title: 'Your finance workspace', description: 'Use the navigation to move between your overview, transactions, wallets and planning tools.' },
   { selector: '[data-tour="dashboard-summary"]', title: 'Start with your snapshot', description: 'The overview brings together your balances, monthly activity and recent financial movement.' },
   { selector: '[data-tour="dashboard-activity"]', title: 'See the bigger picture', description: 'The activity chart and recent transactions help you spot changes without digging through every record.' },
+  { selector: '[data-tour="quick-add"]', title: 'Capture a transaction anywhere', description: 'Use Quick Add from the header or press Ctrl/Cmd + K to record a transaction without leaving your current page.', path: '/overview' },
   { selector: '[data-tour="transactions-link"]', title: 'Track every transaction', description: 'Add transactions manually, import CSV or Excel files, scan receipts and review your history.', path: '/transactions' },
   { selector: '[data-tour="wallets-link"]', title: 'Organize your money', description: 'Keep cash, bank and investment balances separated so your total picture stays accurate.', path: '/wallets' },
   { selector: '[data-tour="categories-link"]', title: 'Make spending searchable', description: 'Categories give every transaction context and make your reports easier to understand.', path: '/categories' },

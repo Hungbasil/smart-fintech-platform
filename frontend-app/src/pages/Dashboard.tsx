@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, CircleDollarSign, ReceiptText, WalletCards } from 'lucide-react';
+import { ArrowUpRight, CalendarClock, CircleDollarSign, Flag, HandCoins, ReceiptText, Target, WalletCards } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card as UiCard, CardHeader, CardBody, SkeletonCard, Skeleton, AnimatedCounter } from '../components';
-import api, { getAnalyticsMonthly, getAnalyticsSummary } from '../services/api';
+import api, { getAnalyticsMonthly, getAnalyticsSummary, getBudgets, getDebts, getSavingGoals } from '../services/api';
 import auth from '../services/auth';
 import { currency } from '../services/format';
 
@@ -34,10 +34,19 @@ interface TransactionPage {
   totalElements: number;
 }
 
+interface DashboardBudget { id: string; categoryName: string; percentage: number; totalSpent: number; budgetAmount: number; }
+interface DashboardDebt { id: string; counterpartyName: string; amount: number; type: 'LEND' | 'BORROW'; status: string; dueDate: string | null; }
+interface DashboardGoal { id: string; name: string; targetAmount: number; currentAmount: number; deadline: string | null; }
+interface DashboardRecurring { id: string; description: string; dayOfMonth: number; amount: number; active: boolean; }
+
 export const Dashboard: React.FC = () => {
   const [data, setData] = useState<DashboardData | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [monthlyData, setMonthlyData] = useState<{ month: string; income: number; expense: number }[]>([]);
+  const [budgets, setBudgets] = useState<DashboardBudget[]>([]);
+  const [debts, setDebts] = useState<DashboardDebt[]>([]);
+  const [savingGoals, setSavingGoals] = useState<DashboardGoal[]>([]);
+  const [recurring, setRecurring] = useState<DashboardRecurring[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,11 +64,15 @@ export const Dashboard: React.FC = () => {
       };
       const monthStart = toLocalDateTime(new Date(now.getFullYear(), now.getMonth(), 1));
       const nextMonthStart = toLocalDateTime(new Date(now.getFullYear(), now.getMonth() + 1, 1));
-      const [walletsResponse, transactionsResponse, summaryResponse, monthlyResponse] = await Promise.all([
+      const [walletsResponse, transactionsResponse, summaryResponse, monthlyResponse, budgetsResponse, debtsResponse, goalsResponse, recurringResponse] = await Promise.all([
         api.get<Wallet[]>('/wallets'),
         api.get<TransactionPage | Transaction[]>('/transactions', { params: { size: 50 } }),
         getAnalyticsSummary({ fromDate: monthStart, toDate: nextMonthStart }),
         getAnalyticsMonthly(),
+        getBudgets(),
+        getDebts(),
+        getSavingGoals(),
+        api.get<DashboardRecurring[]>('/recurring-transactions'),
       ]);
 
       const wallets = walletsResponse.data;
@@ -69,6 +82,10 @@ export const Dashboard: React.FC = () => {
 
       setTransactions(loadedTransactions);
       setMonthlyData(monthlyResponse.data);
+      setBudgets(budgetsResponse.data as DashboardBudget[]);
+      setDebts(debtsResponse.data);
+      setSavingGoals(goalsResponse.data);
+      setRecurring(recurringResponse.data);
       setData({
         totalBalance,
         monthlyTransactions: summaryResponse.data.transactionCount,
@@ -82,6 +99,21 @@ export const Dashboard: React.FC = () => {
   };
 
   const chartData = monthlyData.map((item) => ({ ...item, expenses: item.expense }));
+  const today = new Date();
+  const todayKey = today.toISOString().slice(0, 10);
+  const upcomingDate = new Date(today);
+  upcomingDate.setDate(today.getDate() + 7);
+  const upcomingKey = upcomingDate.toISOString().slice(0, 10);
+  const dueDebts = debts.filter((debt) => debt.status === 'PENDING' && debt.dueDate && debt.dueDate <= upcomingKey);
+  const nearGoals = savingGoals.filter((goal) => goal.deadline && goal.deadline <= upcomingKey && goal.currentAmount < goal.targetAmount);
+  const budgetWarnings = budgets.filter((budget) => budget.percentage >= 80);
+  const recurringSoon = recurring.filter((item) => item.active && (item.dayOfMonth === today.getDate() || item.dayOfMonth === today.getDate() + 1));
+  const focusItems = [
+    ...budgetWarnings.slice(0, 2).map((budget) => ({ icon: Target, tone: budget.percentage > 100 ? 'coral' : 'amber', title: budget.percentage > 100 ? `${budget.categoryName} is over budget` : `${budget.categoryName} is near its limit`, detail: `${budget.percentage.toFixed(0)}% used`, to: '/budgets' })),
+    ...dueDebts.slice(0, 2).map((debt) => ({ icon: HandCoins, tone: 'coral', title: `${debt.type === 'BORROW' ? 'Pay' : 'Collect'} ${debt.counterpartyName}`, detail: debt.dueDate === todayKey ? 'Due today' : `Due ${new Date(`${debt.dueDate}T00:00:00`).toLocaleDateString()}`, to: '/debts' })),
+    ...nearGoals.slice(0, 1).map((goal) => ({ icon: Flag, tone: 'teal', title: `${goal.name} needs attention`, detail: `${Math.round((goal.currentAmount / goal.targetAmount) * 100)}% funded`, to: '/saving-goals' })),
+    ...recurringSoon.slice(0, 1).map((item) => ({ icon: CalendarClock, tone: 'teal', title: `${item.description} is coming up`, detail: item.dayOfMonth === today.getDate() ? 'Scheduled today' : 'Scheduled tomorrow', to: '/recurring' })),
+  ].slice(0, 4);
 
   if (loading) {
     return (
@@ -141,6 +173,11 @@ export const Dashboard: React.FC = () => {
           </div>
         ))}
       </div>
+
+      <section className="mb-7" aria-labelledby="today-focus-title">
+        <div className="mb-3 flex items-end justify-between gap-3"><div><h2 id="today-focus-title" className="section-title">Today&apos;s focus</h2><p className="section-caption mt-1">A short list of money tasks worth your attention.</p></div>{focusItems.length > 0 && <span className="rounded-lg bg-[#e4f4f0] px-2.5 py-1 text-[11px] font-bold text-[#087f74]">{focusItems.length} to review</span>}</div>
+        {focusItems.length > 0 ? <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">{focusItems.map(({ icon: Icon, tone, title, detail, to }) => <Link key={`${title}-${detail}`} to={to} className="group surface flex items-start gap-3 p-4 no-underline transition hover:-translate-y-0.5 hover:shadow-md"><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${tone === 'coral' ? 'bg-[#fff1ef] text-[#d76756]' : tone === 'amber' ? 'bg-[#fff4df] text-[#bd7a22]' : 'bg-[#e4f4f0] text-[#087f74]'}`}><Icon size={17} /></span><span className="min-w-0"><strong className="block truncate text-[13px] font-extrabold text-[#17212b] group-hover:text-[#087f74]">{title}</strong><span className="mt-1 block text-[11px] text-[#9aa7af]">{detail}</span></span><ArrowUpRight size={15} className="ml-auto shrink-0 text-[#c0cbc7] group-hover:text-[#087f74]" /></Link>)}</div> : <div className="surface flex items-center gap-3 p-4"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e4f4f0] text-[#087f74]"><Flag size={17} /></span><div><p className="text-sm font-bold text-[#17212b]">You&apos;re all caught up</p><p className="text-xs text-[#9aa7af]">No urgent budget, debt, goal or recurring tasks in the next seven days.</p></div></div>}
+      </section>
 
       <div data-tour="dashboard-activity" className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr_1fr]">
         <UiCard>

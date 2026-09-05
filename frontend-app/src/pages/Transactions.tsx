@@ -156,6 +156,12 @@ export const Transactions: React.FC = () => {
   }, [search]);
 
   useEffect(() => {
+    const refreshFromQuickAdd = () => setReloadToken((value) => value + 1);
+    window.addEventListener("smartfin:transactions-refresh", refreshFromQuickAdd);
+    return () => window.removeEventListener("smartfin:transactions-refresh", refreshFromQuickAdd);
+  }, []);
+
+  useEffect(() => {
     const fetchTransactions = async () => {
       try {
         setLoading(true);
