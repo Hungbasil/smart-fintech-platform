@@ -89,7 +89,7 @@ select {
   }
 }
 
-@keyframes spin {
+@keyframes guide-border-spin {
   to { transform: rotate(360deg); }
 }
 
@@ -104,6 +104,7 @@ select {
   box-sizing: border-box;
   padding: 4px;
   isolation: isolate;
+  border: 4px solid #075c57;
   border-radius: 14px;
 }
 
@@ -113,9 +114,12 @@ select {
   inset: 0;
   box-sizing: border-box;
   padding: 4px;
-  background: conic-gradient(from 0deg, transparent 70%, #087f74 100%);
+  background: conic-gradient(from 0deg, transparent 0 68%, #087f74 84%, #a8fff3 100%);
   content: '';
-  animation: spin 1.6s linear infinite;
+  animation: guide-border-spin 1.35s linear infinite;
+  filter: drop-shadow(0 0 4px rgba(168, 255, 243, .8));
+  transform-origin: center;
+  will-change: transform;
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
@@ -132,7 +136,7 @@ select {
 }
 
 /* The overlay must remain fixed while the border itself uses relative positioning. */
-.onboarding-spotlight.animated-guide-border { position: fixed; border: 0; }
+.onboarding-spotlight.animated-guide-border { position: fixed; }
 .onboarding-card { animation: onboarding-card-in 280ms cubic-bezier(.2, .75, .3, 1) both; }
 
 @keyframes fade-scale {

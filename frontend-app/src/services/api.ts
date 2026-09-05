@@ -39,6 +39,21 @@ export const getTransactions = (page = 0, size = 10, filters?: Record<string, st
 export const createTransaction = (request: Record<string, unknown>) => api.post('/transactions', request);
 export const deleteTransaction = (id: string) => api.delete(`/transactions/${id}`);
 
+export interface NotificationItem {
+  id: string;
+  message: string;
+  type: string;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export const getNotifications = (page = 0, size = 30) =>
+  api.get<{ content: NotificationItem[]; totalElements: number }>('/notifications', { params: { page, size } });
+export const getUnreadNotificationCount = () => api.get<number>('/notifications/unread-count');
+export const markNotificationAsRead = (id: string) => api.patch(`/notifications/${id}/read`);
+export const markAllNotificationsAsRead = () => api.patch('/notifications/read-all');
+export const deleteNotification = (id: string) => api.delete(`/notifications/${id}`);
+
 export const updateRecurringTransaction = (id: string, request: object) => api.put(`/recurring-transactions/${id}`, request);
 
 export interface OcrResult {

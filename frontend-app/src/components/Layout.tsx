@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom';
 import auth from '../services/auth';
 import AiChatWidget from './AiChatWidget';
 import OnboardingTour from './OnboardingTour';
-import { API_BASE_URL } from '../services/api';
-import { toast } from '../services/notifications';
+import NotificationCenter from './NotificationCenter';
 import { BarChart3, CalendarClock, ChevronDown, ChevronRight, CircleHelp, Goal, HandCoins, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, ReceiptText, ShieldCheck, Tag, Target, WalletCards, Bitcoin } from 'lucide-react';
 
 const navigation = [
@@ -24,17 +23,6 @@ export const Layout: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [debtsOpen, setDebtsOpen] = useState(location.pathname.startsWith('/debts'));
   const [tourRequest, setTourRequest] = useState(0);
-
-  useEffect(() => {
-    const token = auth.getToken();
-    if (!token) return;
-
-    const eventSource = new EventSource(`${API_BASE_URL}/notifications/subscribe?token=${encodeURIComponent(token)}`);
-    eventSource.addEventListener('notification', (event) => {
-      toast.error((event as MessageEvent).data, { duration: 8000 });
-    });
-    return () => eventSource.close();
-  }, []);
 
   if (!auth.isAuthenticated()) {
     return <Outlet />;
@@ -86,7 +74,7 @@ export const Layout: React.FC = () => {
             <span className="text-[15px] font-extrabold text-[#17212b]">SmartFin</span>
           </div>
           <div className="hidden text-[13px] font-semibold text-[#71808c] lg:block">Personal finance workspace</div>
-          <div className="relative"><button data-tour="account-menu" type="button" aria-expanded={profileOpen} onClick={() => setProfileOpen((open) => !open)} className="flex items-center gap-2 rounded-full border border-[#e3ebe8] bg-white py-1.5 pl-1.5 pr-3 text-xs font-bold text-[#17212b] shadow-sm"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#dcefeb] text-[11px] text-[#075c57]">{initials}</span>{displayName}<ChevronDown size={14} className={`text-[#9aa7af] transition-transform ${profileOpen ? 'rotate-180' : ''}`} /></button>{profileOpen && <div className="absolute right-0 top-full z-30 mt-2 w-56 rounded-xl border border-[#e3ebe8] bg-white p-2 shadow-lg"><div className="border-b border-[#edf2f0] px-3 py-2"><p className="truncate text-xs font-extrabold text-[#17212b]">{displayName}</p><p className="truncate text-[11px] text-[#9aa7af]">{user?.email}</p></div><button type="button" onClick={() => { setTourRequest((request) => request + 1); setProfileOpen(false); }} className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-bold text-[#087f74] hover:bg-[#e4f4f0]"><CircleHelp size={15} />Take a tour again</button><button type="button" onClick={() => { auth.logout(); window.location.href = '/login'; }} className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-bold text-[#71808c] hover:bg-[#fff1ef] hover:text-[#d76756]"><LogOut size={15} />Sign out</button></div>}</div>
+          <div className="flex items-center gap-2"><NotificationCenter /><div className="relative"><button data-tour="account-menu" type="button" aria-expanded={profileOpen} onClick={() => setProfileOpen((open) => !open)} className="flex items-center gap-2 rounded-full border border-[#e3ebe8] bg-white py-1.5 pl-1.5 pr-3 text-xs font-bold text-[#17212b] shadow-sm"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#dcefeb] text-[11px] text-[#075c57]">{initials}</span>{displayName}<ChevronDown size={14} className={`text-[#9aa7af] transition-transform ${profileOpen ? 'rotate-180' : ''}`} /></button>{profileOpen && <div className="absolute right-0 top-full z-30 mt-2 w-56 rounded-xl border border-[#e3ebe8] bg-white p-2 shadow-lg"><div className="border-b border-[#edf2f0] px-3 py-2"><p className="truncate text-xs font-extrabold text-[#17212b]">{displayName}</p><p className="truncate text-[11px] text-[#9aa7af]">{user?.email}</p></div><button type="button" onClick={() => { setTourRequest((request) => request + 1); setProfileOpen(false); }} className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-bold text-[#087f74] hover:bg-[#e4f4f0]"><CircleHelp size={15} />Take a tour again</button><button type="button" onClick={() => { auth.logout(); window.location.href = '/login'; }} className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-bold text-[#71808c] hover:bg-[#fff1ef] hover:text-[#d76756]"><LogOut size={15} />Sign out</button></div>}</div></div>
         </header>
         <main className="app-content">
           <div key={`${location.pathname}${location.search}`} className="route-transition">
