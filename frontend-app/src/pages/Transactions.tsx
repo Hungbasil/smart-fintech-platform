@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import * as XLSX from "xlsx";
 import {
   ArrowLeftRight,
   Camera,
@@ -57,6 +58,16 @@ interface CategoryOption {
   id: string;
   name: string;
   type: string;
+}
+
+interface ImportPreviewRow {
+  rowNumber: number;
+  date: string;
+  description: string;
+  amount: string;
+  walletId: string;
+  categoryId: string;
+  error?: string;
 }
 
 type SpeechRecognitionInstance = {
@@ -120,6 +131,8 @@ export const Transactions: React.FC = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  const [importPreview, setImportPreview] = useState<{ file: File; rows: ImportPreviewRow[] } | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
   const [filters, setFilters] = useState({
     type: "",
     walletId: "",
@@ -522,21 +535,14 @@ export const Transactions: React.FC = () => {
     event.target.value = "";
     if (!file) return;
     try {
-      if (file.name.toLowerCase().endsWith(".xlsx")) {
-        const formData = new FormData();
-        formData.append("file", file);
-        const response = await api.post<{ imported: number; skippedDuplicates: number }>("/transactions/import", formData);
-        setReloadToken((value) => value + 1);
-        toast.success(`${response.data.imported} imported, ${response.data.skippedDuplicates} duplicates skipped`);
-        return;
-      }
-      const text = await file.text();
-      const [headerLine, ...lines] = text.split(/\r?\n/).filter(Boolean);
-      const headers = headerLine
-        .split(",")
-        .map((header) =>
-          header.trim().replace(/^"|"$/g, "").toLowerCase().replace(/\s+/g, ""),
-        );
+      const workbook = file.name.toLowerCase().endsWith(".xlsx")
+        ? XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true })
+        : XLSX.read(await file.text(), { type: "string", raw: false });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      if (!sheet) throw new Error("The import file has no readable sheet");
+      const rows = XLSX.utils.sheet_to_json<(string | number | Date)[]>(sheet, { header: 1, raw: false, defval: "" });
+      const headerRow = rows[0] || [];
+      const headers = headerRow.map((header) => String(header).trim().toLowerCase().replace(/\s+/g, ""));
       const indexOf = (...names: string[]) =>
         names
           .map((name) => headers.indexOf(name))
@@ -549,40 +555,62 @@ export const Transactions: React.FC = () => {
         categoryId: indexOf("categoryid", "category_id"),
       };
       if (indexes.amount < 0 || indexes.walletId < 0 || indexes.categoryId < 0)
-        throw new Error("CSV needs amount, walletId and categoryId columns");
-      const parseLine = (line: string) =>
-        line
-          .match(/("(?:[^"]|"")*"|[^,]*)/g)
-          ?.filter((_, index, values) => index < values.length - 1)
-          .map((value) =>
-            value.trim().replace(/^"|"$/g, "").replace(/""/g, '"'),
-          ) || [];
-      const importRows = [];
-      for (const line of lines) {
-        const values = parseLine(line);
-        importRows.push({
-          amount: Math.abs(Number(values[indexes.amount])),
-          description: values[indexes.description] || "Imported transaction",
-          transactionDate:
-            values[indexes.date] || localDateTimeValue(),
-          walletId: values[indexes.walletId],
-          categoryId: values[indexes.categoryId],
-        });
-      }
-      const payload = new Blob([
-        ["Date,Description,Amount,Wallet ID,Category ID", ...importRows.map((row) =>
-          [row.transactionDate, row.description, row.amount, row.walletId, row.categoryId]
-            .map((value) => `"${String(value).replace(/"/g, '""')}"`).join(","))].join("\n"),
-      ], { type: "text/csv" });
-      const response = await api.post<{ imported: number; skippedDuplicates: number }>("/transactions/import", payload, {
-        headers: { "Content-Type": "multipart/form-data" },
-        transformRequest: () => { const formData = new FormData(); formData.append("file", payload, file.name); return formData; },
+        throw new Error("File needs Amount, Wallet ID and Category ID columns");
+      const previewRows = rows.slice(1).filter((row) => row.some((value) => String(value).trim())).map((row, index) => {
+        const values = row.map((value) => value instanceof Date ? value.toISOString().slice(0, 19) : String(value).trim());
+        const date = indexes.date >= 0 ? values[indexes.date] : localDateTimeValue();
+        const description = indexes.description >= 0 ? values[indexes.description] : "Imported transaction";
+        const amount = values[indexes.amount];
+        const walletId = values[indexes.walletId];
+        const categoryId = values[indexes.categoryId];
+        const errors: string[] = [];
+        if (!date || Number.isNaN(new Date(date).getTime())) errors.push("invalid date");
+        if (!amount || !Number.isFinite(Number(amount)) || Number(amount) <= 0) errors.push("invalid amount");
+        if (!walletId) errors.push("missing wallet");
+        if (!categoryId) errors.push("missing category");
+        return { rowNumber: index + 2, date, description, amount, walletId, categoryId, error: errors.length ? errors.join(", ") : undefined };
       });
+      if (!previewRows.length) throw new Error("The import file has no transaction rows");
+      const uploadFile = file.name.toLowerCase().endsWith(".xlsx")
+        ? file
+        : new File([
+          ["Date,Description,Amount,Wallet ID,Category ID", ...previewRows.map((row) =>
+            [row.date, row.description, row.amount, row.walletId, row.categoryId]
+              .map((value) => `"${String(value).replace(/"/g, '""')}"`).join(","))].join("\n"),
+        ], file.name, { type: "text/csv" });
+      setImportPreview({ file: uploadFile, rows: previewRows });
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Unable to preview import file"));
+    }
+  };
+
+  const confirmImport = async () => {
+    if (!importPreview) return;
+    const invalidRows = importPreview.rows.filter((row) => row.error);
+    if (invalidRows.length) {
+      toast.error("Fix or remove invalid rows before importing");
+      return;
+    }
+    try {
+      setIsImporting(true);
+      const formData = new FormData();
+      const csv = ["Date,Description,Amount,Wallet ID,Category ID", ...importPreview.rows.map((row) =>
+        [row.date, row.description, row.amount, row.walletId, row.categoryId]
+          .map((value) => `"${String(value).replace(/"/g, '""')}"`).join(","))].join("\n");
+      formData.append("file", new File([csv], importPreview.file.name.replace(/\.xlsx$/i, ".csv"), { type: "text/csv" }));
+      const response = await api.post<{ imported: number; skippedDuplicates: number }>("/transactions/import", formData);
+      setImportPreview(null);
       setReloadToken((value) => value + 1);
       toast.success(`${response.data.imported} imported, ${response.data.skippedDuplicates} duplicates skipped`);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Unable to import CSV"));
+      toast.error(getApiErrorMessage(err, "Unable to import file"));
+    } finally {
+      setIsImporting(false);
     }
+  };
+
+  const removePreviewRow = (rowNumber: number) => {
+    setImportPreview((current) => current ? { ...current, rows: current.rows.filter((row) => row.rowNumber !== rowNumber) } : current);
   };
 
   if (loading) {
@@ -866,6 +894,7 @@ export const Transactions: React.FC = () => {
           </div>
         </CardBody>
       </Card>
+      {importPreview && <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#17212b]/35 p-4 backdrop-blur-[2px]"><div role="dialog" aria-modal="true" aria-labelledby="import-preview-title" className="max-h-[calc(100svh-2rem)] w-full max-w-[860px] overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl sm:p-6"><div className="mb-5 flex items-start justify-between gap-4"><div><div className="eyebrow">Review before import</div><h2 id="import-preview-title" className="mt-1 text-xl font-extrabold tracking-[-.04em] text-[#17212b]">Import preview</h2><p className="mt-1 text-xs text-[#71808c]">{importPreview.rows.length} rows found. Duplicate transactions will be skipped by the server.</p></div><button type="button" aria-label="Close import preview" onClick={() => setImportPreview(null)} className="rounded-lg p-2 text-[#9aa7af] hover:bg-[#f4f7f6] hover:text-[#17212b]"><X size={18} /></button></div><div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3"><div className="rounded-xl bg-[#e4f4f0] p-3"><p className="text-[11px] font-bold text-[#71808c]">Ready</p><p className="mt-1 text-xl font-extrabold text-[#087f74]">{importPreview.rows.filter((row) => !row.error).length}</p></div><div className="rounded-xl bg-[#fff1ef] p-3"><p className="text-[11px] font-bold text-[#71808c]">Needs review</p><p className="mt-1 text-xl font-extrabold text-[#d76756]">{importPreview.rows.filter((row) => row.error).length}</p></div><div className="col-span-2 rounded-xl bg-[#fff4df] p-3 sm:col-span-1"><p className="text-[11px] font-bold text-[#71808c]">Duplicate check</p><p className="mt-1 text-sm font-extrabold text-[#bd7a22]">On import</p></div></div><div className="overflow-x-auto rounded-xl border border-[#e3ebe8]"><table className="w-full min-w-[760px] text-left text-xs"><thead className="bg-[#f7faf9] text-[11px] font-extrabold uppercase tracking-wide text-[#71808c]"><tr><th className="px-3 py-2">Row</th><th className="px-3 py-2">Date</th><th className="px-3 py-2">Description</th><th className="px-3 py-2">Amount</th><th className="px-3 py-2">Wallet</th><th className="px-3 py-2">Category</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Action</th></tr></thead><tbody>{importPreview.rows.slice(0, 100).map((row) => <tr key={row.rowNumber} className="border-t border-[#edf2f0]"><td className="px-3 py-2 font-bold text-[#9aa7af]">{row.rowNumber}</td><td className="px-3 py-2 text-[#71808c]">{row.date || '-'}</td><td className="max-w-[180px] truncate px-3 py-2 font-bold text-[#17212b]">{row.description || '-'}</td><td className="px-3 py-2 font-bold text-[#17212b]">{row.amount || '-'}</td><td className="max-w-[150px] truncate px-3 py-2 text-[#71808c]">{row.walletId || '-'}</td><td className="max-w-[150px] truncate px-3 py-2 text-[#71808c]">{row.categoryId || '-'}</td><td className={`px-3 py-2 font-bold ${row.error ? 'text-[#d76756]' : 'text-[#087f74]'}`}>{row.error || 'Ready'}</td><td className="px-3 py-2"><button type="button" aria-label={`Skip row ${row.rowNumber}`} title="Skip this row" onClick={() => removePreviewRow(row.rowNumber)} className="rounded-lg p-1.5 text-[#9aa7af] hover:bg-[#fff1ef] hover:text-[#d76756]"><Trash2 size={14} /></button></td></tr>)}</tbody></table></div>{importPreview.rows.length > 100 && <p className="mt-2 text-[11px] text-[#9aa7af]">Showing the first 100 rows. All {importPreview.rows.length} rows will be imported.</p>}<div className="mt-5 flex flex-col-reverse gap-3 border-t border-[#edf2f0] pt-4 sm:flex-row sm:justify-end"><button type="button" onClick={() => setImportPreview(null)} className="rounded-xl border border-[#e3ebe8] px-4 py-2.5 text-sm font-bold text-[#71808c] hover:bg-[#f4f7f6]">Cancel</button><button type="button" disabled={isImporting || !importPreview.rows.length || importPreview.rows.some((row) => row.error)} onClick={() => void confirmImport()} className="rounded-xl bg-[#087f74] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#075c57] disabled:cursor-not-allowed disabled:opacity-50">{isImporting ? 'Importing...' : `Confirm import (${importPreview.rows.length})`}</button></div></div></div>}
       {isCreateOpen && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#17212b]/35 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur-[2px]">
           <div
