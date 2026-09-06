@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent } from 'react';
-import { Bot, ImagePlus, MessageCircle, Send, X } from 'lucide-react';
-import { askAi } from '../services/api';
+import { Bot, ImagePlus, MessageCircle, Send, X, ExternalLink } from 'lucide-react';
+import { askAi, type AiAction } from '../services/api';
+import { useNavigate } from 'react-router-dom';
 
 interface ChatMessage {
   id: number;
   role: 'user' | 'assistant';
   content: string;
   image?: string;
+  actions?: AiAction[];
+  sources?: string[];
+  updatedAt?: string;
 }
 
 const initialMessage: ChatMessage = {
@@ -16,6 +20,7 @@ const initialMessage: ChatMessage = {
 };
 
 export function AiChatWidget() {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [pendingImage, setPendingImage] = useState<string | null>(null);
@@ -66,7 +71,7 @@ export function AiChatWidget() {
       const response = await askAi({ message: trimmedMessage || 'Hãy phân tích ảnh này.', image: imageToSend || undefined });
       setMessages((current) => [
         ...current,
-        { id: Date.now() + 1, role: 'assistant', content: response.data },
+        { id: Date.now() + 1, role: 'assistant', content: response.data.message, actions: response.data.actions, sources: response.data.sources, updatedAt: response.data.updatedAt },
       ]);
     } catch {
       setMessages((current) => [
@@ -126,6 +131,8 @@ export function AiChatWidget() {
                 >
                   {chatMessage.image && <img src={chatMessage.image} alt="User attachment" className="mb-2 max-h-40 rounded-xl object-cover" />}
                   {chatMessage.content}
+                  {chatMessage.actions?.map((action) => <button key={action.type} type="button" onClick={() => { if (action.type === 'CREATE_TRANSACTION') { localStorage.setItem('smartfin.ai.transaction', String(action.data.description || '')); window.dispatchEvent(new CustomEvent('smartfin:ai-create-transaction')); } else navigate(action.path); }} className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#e4f4f0] px-2.5 py-2 text-xs font-bold text-[#075c57] hover:bg-[#d5eee8]"><ExternalLink size={13} />{action.label}</button>)}
+                  {chatMessage.sources && <p className="mt-2 border-t border-[#edf2f0] pt-2 text-[10px] text-[#9aa7af]">Nguồn: {chatMessage.sources.join(' • ')}{chatMessage.updatedAt ? ` • ${new Date(chatMessage.updatedAt).toLocaleTimeString()}` : ''}</p>}
                 </div>
               </div>
             ))}

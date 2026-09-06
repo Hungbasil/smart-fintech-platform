@@ -242,7 +242,20 @@ export interface AiChatRequest {
   image?: string;
 }
 
-export const askAi = (request: AiChatRequest) => api.post<string>('/ai/chat', request);
+export interface AiAction { type: string; label: string; path: string; data: Record<string, unknown>; }
+export interface AiChatResponse { message: string; actions: AiAction[]; sources: string[]; updatedAt: string; }
+export interface AiInsightsResponse {
+  headline: string;
+  suggestions: string[];
+  budgetRecommendations: Array<{ categoryName: string; suggestedAmount: number; reason: string }>;
+  anomalies: Array<{ description: string; amount: number; explanation: string }>;
+  actions: AiAction[];
+  sources: string[];
+  updatedAt: string;
+}
+
+export const askAi = (request: AiChatRequest) => api.post<AiChatResponse>('/ai/chat', request);
+export const getAiInsights = () => api.get<AiInsightsResponse>('/ai/insights');
 
 // ==================== ADMIN ENDPOINTS ====================
 

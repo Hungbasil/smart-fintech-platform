@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, CalendarClock, CircleDollarSign, Flag, HandCoins, ReceiptText, Target, WalletCards } from 'lucide-react';
+import { ArrowUpRight, CalendarClock, CircleDollarSign, Flag, HandCoins, ReceiptText, Target, WalletCards, Sparkles } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card as UiCard, CardHeader, CardBody, SkeletonCard, Skeleton, AnimatedCounter } from '../components';
-import api, { getAnalyticsMonthly, getAnalyticsSummary, getBudgets, getDebts, getSavingGoals } from '../services/api';
+import api, { getAnalyticsMonthly, getAnalyticsSummary, getAiInsights, getBudgets, getDebts, getSavingGoals, type AiInsightsResponse } from '../services/api';
 import auth from '../services/auth';
 import { currency } from '../services/format';
 
@@ -47,6 +47,7 @@ export const Dashboard: React.FC = () => {
   const [debts, setDebts] = useState<DashboardDebt[]>([]);
   const [savingGoals, setSavingGoals] = useState<DashboardGoal[]>([]);
   const [recurring, setRecurring] = useState<DashboardRecurring[]>([]);
+  const [aiInsights, setAiInsights] = useState<AiInsightsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,7 +65,7 @@ export const Dashboard: React.FC = () => {
       };
       const monthStart = toLocalDateTime(new Date(now.getFullYear(), now.getMonth(), 1));
       const nextMonthStart = toLocalDateTime(new Date(now.getFullYear(), now.getMonth() + 1, 1));
-      const [walletsResponse, transactionsResponse, summaryResponse, monthlyResponse, budgetsResponse, debtsResponse, goalsResponse, recurringResponse] = await Promise.all([
+      const [walletsResponse, transactionsResponse, summaryResponse, monthlyResponse, budgetsResponse, debtsResponse, goalsResponse, recurringResponse, insightsResponse] = await Promise.all([
         api.get<Wallet[]>('/wallets'),
         api.get<TransactionPage | Transaction[]>('/transactions', { params: { size: 50 } }),
         getAnalyticsSummary({ fromDate: monthStart, toDate: nextMonthStart }),
@@ -73,6 +74,7 @@ export const Dashboard: React.FC = () => {
         getDebts(),
         getSavingGoals(),
         api.get<DashboardRecurring[]>('/recurring-transactions'),
+        getAiInsights(),
       ]);
 
       const wallets = walletsResponse.data;
@@ -86,6 +88,7 @@ export const Dashboard: React.FC = () => {
       setDebts(debtsResponse.data);
       setSavingGoals(goalsResponse.data);
       setRecurring(recurringResponse.data);
+      setAiInsights(insightsResponse.data);
       setData({
         totalBalance,
         monthlyTransactions: summaryResponse.data.transactionCount,
@@ -178,6 +181,8 @@ export const Dashboard: React.FC = () => {
         <div className="mb-3 flex items-end justify-between gap-3"><div><h2 id="today-focus-title" className="section-title">Today&apos;s focus</h2><p className="section-caption mt-1">A short list of money tasks worth your attention.</p></div>{focusItems.length > 0 && <span className="rounded-lg bg-[#e4f4f0] px-2.5 py-1 text-[11px] font-bold text-[#087f74]">{focusItems.length} to review</span>}</div>
         {focusItems.length > 0 ? <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">{focusItems.map(({ icon: Icon, tone, title, detail, to }) => <Link key={`${title}-${detail}`} to={to} className="group surface flex items-start gap-3 p-4 no-underline transition hover:-translate-y-0.5 hover:shadow-md"><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${tone === 'coral' ? 'bg-[#fff1ef] text-[#d76756]' : tone === 'amber' ? 'bg-[#fff4df] text-[#bd7a22]' : 'bg-[#e4f4f0] text-[#087f74]'}`}><Icon size={17} /></span><span className="min-w-0"><strong className="block truncate text-[13px] font-extrabold text-[#17212b] group-hover:text-[#087f74]">{title}</strong><span className="mt-1 block text-[11px] text-[#9aa7af]">{detail}</span></span><ArrowUpRight size={15} className="ml-auto shrink-0 text-[#c0cbc7] group-hover:text-[#087f74]" /></Link>)}</div> : <div className="surface flex items-center gap-3 p-4"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e4f4f0] text-[#087f74]"><Flag size={17} /></span><div><p className="text-sm font-bold text-[#17212b]">You&apos;re all caught up</p><p className="text-xs text-[#9aa7af]">No urgent budget, debt, goal or recurring tasks in the next seven days.</p></div></div>}
       </section>
+
+      {aiInsights && <section className="mb-7 surface surface-pad" aria-labelledby="ai-insights-title"><div className="flex items-start gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#e4f4f0] text-[#087f74]"><Sparkles size={17} /></span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center justify-between gap-2"><h2 id="ai-insights-title" className="section-title">Personalized guidance</h2><span className="text-[10px] text-[#9aa7af]">Updated {new Date(aiInsights.updatedAt).toLocaleString()}</span></div><p className="mt-1 text-sm text-[#71808c]">{aiInsights.headline}</p><ul className="mt-3 space-y-1 text-xs text-[#34434c]">{aiInsights.suggestions.map((suggestion) => <li key={suggestion}>• {suggestion}</li>)}</ul>{aiInsights.budgetRecommendations.length > 0 && <div className="mt-3 rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] p-3"><p className="text-[11px] font-extrabold uppercase tracking-wide text-[#71808c]">Suggested budgets</p>{aiInsights.budgetRecommendations.slice(0, 3).map((recommendation) => <div key={recommendation.categoryName} className="mt-2 flex items-center justify-between gap-3 text-xs"><span className="font-bold text-[#34434c]">{recommendation.categoryName}</span><span className="font-extrabold text-[#087f74]">{currency.format(recommendation.suggestedAmount)}</span></div>)}</div>}{aiInsights.anomalies.filter((anomaly) => anomaly.amount > 0).map((anomaly) => <p key={anomaly.description} className="mt-2 rounded-lg bg-[#fff4df] px-3 py-2 text-xs text-[#8b5a16]"><strong>{anomaly.description}</strong>: {anomaly.explanation}</p>)}<div className="mt-3 flex flex-wrap gap-2">{aiInsights.actions.map((action) => <Link key={action.type} to={action.path} className="inline-flex items-center gap-1 rounded-lg bg-[#f1f6f4] px-2.5 py-1.5 text-xs font-bold text-[#075c57] no-underline hover:bg-[#e4f4f0]">{action.label}<ArrowUpRight size={13} /></Link>)}</div><p className="mt-3 text-[10px] text-[#9aa7af]">Nguồn: {aiInsights.sources.join(' • ')}</p></div></div></section>}
 
       <div data-tour="dashboard-activity" className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr_1fr]">
         <UiCard>

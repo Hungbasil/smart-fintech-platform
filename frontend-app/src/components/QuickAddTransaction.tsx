@@ -48,7 +48,9 @@ export const QuickAddTransaction: React.FC<QuickAddTransactionProps> = ({ open, 
   useEffect(() => {
     if (!open) return;
     setError(null);
-    setForm((current) => ({ ...current, transactionDate: localDateTimeValue() }));
+    const prefill = localStorage.getItem('smartfin.ai.transaction');
+    localStorage.removeItem('smartfin.ai.transaction');
+    setForm((current) => ({ ...current, description: prefill || current.description, transactionDate: localDateTimeValue() }));
     const loadOptions = async () => {
       try {
         setLoadingOptions(true);

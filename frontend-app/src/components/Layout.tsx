@@ -38,6 +38,12 @@ export const Layout: React.FC = () => {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  useEffect(() => {
+    const openFromAi = () => setQuickAddOpen(true);
+    window.addEventListener('smartfin:ai-create-transaction', openFromAi);
+    return () => window.removeEventListener('smartfin:ai-create-transaction', openFromAi);
+  }, []);
+
   if (!auth.isAuthenticated()) {
     return <Outlet />;
   }
