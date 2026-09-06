@@ -38,7 +38,28 @@ export const Budgets: React.FC = () => {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    void load();
+  }, []);
+
+  useEffect(() => {
+    const stored = localStorage.getItem('smartfin.ai.budget');
+    if (!stored || !categories.length) return;
+    try {
+      const recommendation = JSON.parse(stored) as { categoryId?: string; categoryName?: string; amount?: number };
+      const normalizedName = recommendation.categoryName?.trim().toLocaleLowerCase();
+      const matchedCategory = recommendation.categoryId
+        ? categories.find((category) => category.id === recommendation.categoryId)
+        : categories.find((category) => category.name.trim().toLocaleLowerCase() === normalizedName);
+      if (matchedCategory && recommendation.amount) {
+        setCategoryId(matchedCategory.id);
+        setAmount(String(recommendation.amount));
+        setIsModalOpen(true);
+      }
+    } finally {
+      localStorage.removeItem('smartfin.ai.budget');
+    }
+  }, [categories]);
 
   const save = async (event: React.FormEvent) => {
     event.preventDefault();

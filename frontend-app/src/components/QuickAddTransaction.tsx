@@ -48,9 +48,18 @@ export const QuickAddTransaction: React.FC<QuickAddTransactionProps> = ({ open, 
   useEffect(() => {
     if (!open) return;
     setError(null);
-    const prefill = localStorage.getItem('smartfin.ai.transaction');
+    const storedPrefill = localStorage.getItem('smartfin.ai.transaction');
     localStorage.removeItem('smartfin.ai.transaction');
-    setForm((current) => ({ ...current, description: prefill || current.description, transactionDate: localDateTimeValue() }));
+    let prefill: { description?: string; amount?: number; categoryId?: string; walletId?: string } = {};
+    try { prefill = storedPrefill ? JSON.parse(storedPrefill) as typeof prefill : {}; } catch { prefill = { description: storedPrefill || '' }; }
+    setForm((current) => ({
+      ...current,
+      description: prefill.description || current.description,
+      amount: prefill.amount ? String(prefill.amount) : current.amount,
+      walletId: prefill.walletId || current.walletId,
+      categoryId: prefill.categoryId || current.categoryId,
+      transactionDate: localDateTimeValue(),
+    }));
     const loadOptions = async () => {
       try {
         setLoadingOptions(true);

@@ -247,7 +247,7 @@ export interface AiChatResponse { message: string; actions: AiAction[]; sources:
 export interface AiInsightsResponse {
   headline: string;
   suggestions: string[];
-  budgetRecommendations: Array<{ categoryName: string; suggestedAmount: number; reason: string }>;
+  budgetRecommendations: Array<{ categoryId: string; categoryName: string; suggestedAmount: number; reason: string }>;
   anomalies: Array<{ description: string; amount: number; explanation: string }>;
   actions: AiAction[];
   sources: string[];

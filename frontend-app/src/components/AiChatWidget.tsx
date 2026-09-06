@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent } from
 import { Bot, ImagePlus, MessageCircle, Send, X, ExternalLink } from 'lucide-react';
 import { askAi, type AiAction } from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import auth from '../services/auth';
 
 interface ChatMessage {
   id: number;
@@ -19,15 +20,54 @@ const initialMessage: ChatMessage = {
   content: 'Xin chào! Tôi có thể giúp bạn hiểu rõ hơn về tình hình tài chính của mình.',
 };
 
+const CHAT_HISTORY_TTL = 24 * 60 * 60 * 1000;
+
+type StoredChatHistory = {
+  savedAt: number;
+  messages: ChatMessage[];
+};
+
+const getChatHistoryKey = () => {
+  const user = auth.getUser();
+  return `smartfin.ai.chat.${user?.id || user?.email || 'guest'}`;
+};
+
+const loadChatHistory = (): ChatMessage[] => {
+  try {
+    const stored = localStorage.getItem(getChatHistoryKey());
+    if (!stored) return [initialMessage];
+    const history = JSON.parse(stored) as StoredChatHistory;
+    if (!history.savedAt || Date.now() - history.savedAt >= CHAT_HISTORY_TTL || !Array.isArray(history.messages)) {
+      localStorage.removeItem(getChatHistoryKey());
+      return [initialMessage];
+    }
+    return history.messages.length > 0 ? history.messages : [initialMessage];
+  } catch {
+    localStorage.removeItem(getChatHistoryKey());
+    return [initialMessage];
+  }
+};
+
 export function AiChatWidget() {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [pendingImage, setPendingImage] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([initialMessage]);
+  const [messages, setMessages] = useState<ChatMessage[]>(loadChatHistory);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const historyKey = getChatHistoryKey();
+    try {
+      localStorage.setItem(historyKey, JSON.stringify({ savedAt: Date.now(), messages } satisfies StoredChatHistory));
+    } catch {
+      // Images can exceed the browser storage quota; keep text history available.
+      const textOnlyMessages = messages.map(({ image: _image, ...message }) => message);
+      localStorage.setItem(historyKey, JSON.stringify({ savedAt: Date.now(), messages: textOnlyMessages } satisfies StoredChatHistory));
+    }
+  }, [messages]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -131,7 +171,7 @@ export function AiChatWidget() {
                 >
                   {chatMessage.image && <img src={chatMessage.image} alt="User attachment" className="mb-2 max-h-40 rounded-xl object-cover" />}
                   {chatMessage.content}
-                  {chatMessage.actions?.map((action) => <button key={action.type} type="button" onClick={() => { if (action.type === 'CREATE_TRANSACTION') { localStorage.setItem('smartfin.ai.transaction', String(action.data.description || '')); window.dispatchEvent(new CustomEvent('smartfin:ai-create-transaction')); } else navigate(action.path); }} className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#e4f4f0] px-2.5 py-2 text-xs font-bold text-[#075c57] hover:bg-[#d5eee8]"><ExternalLink size={13} />{action.label}</button>)}
+                  {chatMessage.actions?.map((action) => <button key={`${action.type}-${action.label}`} type="button" onClick={() => { if (action.type === 'CREATE_TRANSACTION') { localStorage.setItem('smartfin.ai.transaction', JSON.stringify(action.data)); window.dispatchEvent(new CustomEvent('smartfin:ai-create-transaction')); } else if (action.type === 'CREATE_BUDGET') { localStorage.setItem('smartfin.ai.budget', JSON.stringify(action.data)); navigate('/budgets'); } else navigate(action.path); }} className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#e4f4f0] px-2.5 py-2 text-xs font-bold text-[#075c57] hover:bg-[#d5eee8]"><ExternalLink size={13} />{action.label}</button>)}
                   {chatMessage.sources && <p className="mt-2 border-t border-[#edf2f0] pt-2 text-[10px] text-[#9aa7af]">Nguồn: {chatMessage.sources.join(' • ')}{chatMessage.updatedAt ? ` • ${new Date(chatMessage.updatedAt).toLocaleTimeString()}` : ''}</p>}
                 </div>
               </div>
