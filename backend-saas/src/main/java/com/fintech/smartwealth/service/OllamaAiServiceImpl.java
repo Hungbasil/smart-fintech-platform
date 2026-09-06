@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ResponseStatusException;
+import com.fintech.smartwealth.dto.AiChatResponse;
 
 import java.util.List;
 
@@ -27,6 +28,8 @@ public class OllamaAiServiceImpl implements AiChatService {
     public String ask(String prompt) {
         return askWithModel(prompt, null, textModel);
     }
+
+    @Override public AiChatResponse enrichChat(String answer, String userMessage) { return AiAssistantActions.enrich(answer, userMessage); }
 
     @Override
     public String ask(String prompt, String imageBase64) {
