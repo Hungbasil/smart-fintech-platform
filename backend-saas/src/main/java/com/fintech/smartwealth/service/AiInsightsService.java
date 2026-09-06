@@ -33,6 +33,7 @@ public class AiInsightsService {
         List<String> suggestions = new ArrayList<>();
         List<AiInsightsResponse.BudgetRecommendation> recommendations = budgets.stream()
                 .map(budget -> new AiInsightsResponse.BudgetRecommendation(
+                        budget.categoryId(),
                         budget.categoryName(),
                         budget.totalSpent().multiply(BigDecimal.valueOf(1.1)).max(budget.budgetAmount()),
                         "Dựa trên mức chi hiện tại và một khoảng đệm 10%."))
@@ -48,12 +49,19 @@ public class AiInsightsService {
                 .toList();
         if (!anomalies.isEmpty()) suggestions.add("Có " + anomalies.size() + " khoản chi lớn hơn đáng kể mức trung bình, hãy kiểm tra lại.");
         if (suggestions.isEmpty()) suggestions.add("Dữ liệu hiện tại đang ổn định. Tiếp tục ghi nhận giao dịch để SmartFin cải thiện dự báo.");
+        List<AiAction> actions = new ArrayList<>();
+        recommendations.forEach(recommendation -> actions.add(new AiAction(
+                "CREATE_BUDGET",
+                "Áp dụng ngân sách " + recommendation.categoryName(),
+                "/budgets",
+                Map.of("categoryId", recommendation.categoryId().toString(), "amount", recommendation.suggestedAmount()))));
+        actions.add(new AiAction("OPEN_ANALYTICS", "Mở phân tích", "/analytics/overview", Map.of()));
         return new AiInsightsResponse(
                 "Gợi ý được tạo từ dữ liệu tháng " + YearMonth.now() + ".",
                 suggestions,
                 recommendations,
                 anomalies,
-                List.of(new AiAction("OPEN_BUDGETS", "Xem ngân sách", "/budgets", Map.of()), new AiAction("OPEN_ANALYTICS", "Mở phân tích", "/analytics/overview", Map.of())),
+                actions,
                 List.of("Ngân sách hiện tại", "Giao dịch của bạn", "SmartFin AI"),
                 OffsetDateTime.now());
     }

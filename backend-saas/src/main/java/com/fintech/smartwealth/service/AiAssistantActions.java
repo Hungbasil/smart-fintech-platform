@@ -2,9 +2,7 @@ package com.fintech.smartwealth.service;
 
 import com.fintech.smartwealth.dto.AiAction;
 import com.fintech.smartwealth.dto.AiChatResponse;
-import com.fintech.smartwealth.dto.AiInsightsResponse;
 
-import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +20,4 @@ final class AiAssistantActions {
         return new AiChatResponse(answer, actions, List.of("SmartFin AI", "Dữ liệu tài chính hiện tại của bạn"), OffsetDateTime.now());
     }
 
-    static AiInsightsResponse insights() {
-        return new AiInsightsResponse();
-    }
 }

@@ -15,6 +15,6 @@ public record AiInsightsResponse(
     public record Anomaly(String description, BigDecimal amount, String explanation) {
     }
 
-    public record BudgetRecommendation(String categoryName, BigDecimal suggestedAmount, String reason) {
+    public record BudgetRecommendation(java.util.UUID categoryId, String categoryName, BigDecimal suggestedAmount, String reason) {
     }
 }
