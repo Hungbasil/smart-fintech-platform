@@ -3,5 +3,8 @@ package com.fintech.smartwealth.dto;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
+import java.util.List;
 
-public record SavingGoalResponse(UUID id, String name, BigDecimal targetAmount, BigDecimal currentAmount, LocalDate deadline) {}
+public record SavingGoalResponse(UUID id, String name, BigDecimal targetAmount, BigDecimal currentAmount, LocalDate deadline,
+								 BigDecimal requiredMonthlyAmount, LocalDate projectedCompletionDate,
+								 List<SavingGoalMonthlyContribution> monthlyContributions) {}

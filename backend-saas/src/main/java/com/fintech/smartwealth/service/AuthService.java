@@ -1,6 +1,7 @@
 package com.fintech.smartwealth.service;
 
 import com.fintech.smartwealth.dto.AuthResponse;
+import com.fintech.smartwealth.dto.ChangePasswordRequest;
 import com.fintech.smartwealth.dto.LoginRequest;
 import com.fintech.smartwealth.dto.RegisterRequest;
 import com.fintech.smartwealth.dto.UserSummary;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -97,6 +99,23 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(newPassword));
         user.setActive(true);
         userRepository.save(user);
+    }
+
+    @Transactional
+    public void changePassword(String email, ChangePasswordRequest request) {
+        User user = findUser(email);
+        if (!matchesPassword(request.getCurrentPassword(), user)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect");
+        }
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+        refreshSessionRepository.deleteByUserId(user.getId());
+    }
+
+    @Transactional
+    public void revokeAll(String email) {
+        User user = findUser(email);
+        refreshSessionRepository.deleteByUserId(user.getId());
     }
 
     private User findUser(String email) {

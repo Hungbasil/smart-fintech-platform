@@ -1,0 +1,1 @@
+ALTER TABLE recurring_transactions ADD COLUMN IF NOT EXISTS skipped_month VARCHAR(7);

@@ -27,4 +27,5 @@ public class RecurringTransaction {
     @Column(name = "day_of_month", nullable = false) private Integer dayOfMonth;
     @Column(nullable = false) private boolean active = true;
     @Column(name = "last_processed") private LocalDate lastProcessed;
+    @Column(name = "skipped_month", length = 7) private String skippedMonth;
 }

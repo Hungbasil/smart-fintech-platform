@@ -46,6 +46,7 @@ public class AuthController {
         authService.revoke(request.getOrDefault("refreshToken", ""));
     }
 
+
     @PostMapping("/verify-registration")
     public Map<String, String> verifyRegistration(@RequestBody OtpRequest request) {
         authService.verifyRegistration(request.email(), request.otp());

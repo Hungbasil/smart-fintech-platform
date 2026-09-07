@@ -13,5 +13,6 @@ public class RecurringTransactionController {
     @GetMapping public List<RecurringTransactionResponse> findAll() { return service.findAll(); }
     @PostMapping @ResponseStatus(HttpStatus.CREATED) public RecurringTransactionResponse create(@Valid @RequestBody RecurringTransactionRequest request) { return service.save(request, null); }
     @PutMapping("/{id}") public RecurringTransactionResponse update(@PathVariable UUID id, @Valid @RequestBody RecurringTransactionRequest request) { return service.save(request, id); }
+    @PostMapping("/{id}/skip-next") public RecurringTransactionResponse skipNext(@PathVariable UUID id) { return service.skipNext(id); }
     @DeleteMapping("/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) public void delete(@PathVariable UUID id) { service.delete(id); }
 }

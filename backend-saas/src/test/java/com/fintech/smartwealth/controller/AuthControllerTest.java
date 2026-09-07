@@ -132,6 +132,50 @@ class AuthControllerTest {
     }
 
     @Test
+    void changePasswordShouldInvalidateRefreshSessions() throws Exception {
+        String email = "change-password-" + UUID.randomUUID() + "@example.com";
+        User user = new User();
+        user.setFullName("Password User");
+        user.setEmail(email);
+        user.setPassword(passwordEncoder.encode("Password123"));
+        user.setActive(true);
+        userRepository.save(user);
+
+        String loginPayload = """
+                {
+                  "email": "%s",
+                  "password": "Password123"
+                }
+                """.formatted(email);
+        String token = objectMapper.readTree(mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(loginPayload))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString()).get("token").asText();
+
+        String changePayload = """
+                {
+                  "currentPassword": "Password123",
+                  "newPassword": "NewPassword123"
+                }
+                """;
+        mockMvc.perform(post("/api/v1/account/change-password")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(changePayload))
+                .andExpect(status().isNoContent());
+
+        User changed = userRepository.findByEmail(email).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertTrue(passwordEncoder.matches("NewPassword123", changed.getPassword()));
+    }
+
+    @Test
+    void logoutAllShouldRequireAuthentication() throws Exception {
+        mockMvc.perform(post("/api/v1/account/logout-all"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void registerAndLoginShouldNormalizeEmailCaseAndWhitespace() throws Exception {
         String rawEmail = "  Auth-Trim-" + UUID.randomUUID() + "@Example.COM  ";
         String normalizedEmail = rawEmail.trim().toLowerCase(Locale.ROOT);

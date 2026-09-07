@@ -42,6 +42,23 @@ public class RecurringTransactionService {
 
     public void delete(UUID id) { recurringRepository.delete(recurringRepository.findByIdAndUserId(id, securityUtils.getCurrentUserId()).orElseThrow(() -> notFound("Recurring transaction"))); }
 
+    @Transactional
+    public RecurringTransactionResponse skipNext(UUID id) {
+        RecurringTransaction item = recurringRepository.findByIdAndUserId(id, securityUtils.getCurrentUserId())
+                .orElseThrow(() -> notFound("Recurring transaction"));
+        if (!item.isActive()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Paused recurring transactions cannot skip a cycle");
+        }
+        LocalDate today = LocalDate.now();
+        YearMonth month = YearMonth.from(today);
+        int effectiveDay = Math.min(item.getDayOfMonth(), month.lengthOfMonth());
+        String currentMonth = month.toString();
+        boolean currentMonthAvailable = effectiveDay >= today.getDayOfMonth()
+                && !executionRepository.existsByRecurringTransactionIdAndExecutionMonth(item.getId(), currentMonth);
+        item.setSkippedMonth((currentMonthAvailable ? month : month.plusMonths(1)).toString());
+        return response(recurringRepository.save(item));
+    }
+
     @Scheduled(cron = "0 5 0 * * *")
     @Transactional public void processDueTransactions() {
         LocalDate today = LocalDate.now();
@@ -49,6 +66,7 @@ public class RecurringTransactionService {
         for (RecurringTransaction item : recurringRepository.findByActiveTrue()) {
             int effectiveDay = Math.min(item.getDayOfMonth(), YearMonth.from(today).lengthOfMonth());
             if (effectiveDay > today.getDayOfMonth()
+                    || executionMonth.equals(item.getSkippedMonth())
                     || executionRepository.existsByRecurringTransactionIdAndExecutionMonth(item.getId(), executionMonth)) continue;
             BigDecimal delta = "EXPENSE".equalsIgnoreCase(item.getCategory().getType()) ? item.getAmount().negate() : item.getAmount();
             BigDecimal balance = item.getWallet().getBalance().add(delta);
@@ -61,10 +79,20 @@ public class RecurringTransactionService {
             execution.setExecutionMonth(executionMonth);
             execution.setTransaction(saved);
             executionRepository.save(execution);
-            item.setLastProcessed(today); recurringRepository.save(item); walletRepository.save(item.getWallet());
+            item.setLastProcessed(today); item.setSkippedMonth(null); recurringRepository.save(item); walletRepository.save(item.getWallet());
         }
     }
 
-    private RecurringTransactionResponse response(RecurringTransaction item) { return new RecurringTransactionResponse(item.getId(), item.getWallet().getId(), item.getCategory().getId(), item.getDescription(), item.getAmount(), item.getDayOfMonth(), item.isActive(), item.getLastProcessed()); }
+    private RecurringTransactionResponse response(RecurringTransaction item) {
+        LocalDate today = LocalDate.now();
+        YearMonth month = YearMonth.from(today);
+        int effectiveDay = Math.min(item.getDayOfMonth(), month.lengthOfMonth());
+        LocalDate nextRun = month.atDay(effectiveDay);
+        if (!nextRun.isAfter(today) || month.toString().equals(item.getSkippedMonth())) {
+            month = month.plusMonths(1);
+            nextRun = month.atDay(Math.min(item.getDayOfMonth(), month.lengthOfMonth()));
+        }
+        return new RecurringTransactionResponse(item.getId(), item.getWallet().getId(), item.getCategory().getId(), item.getDescription(), item.getAmount(), item.getDayOfMonth(), item.isActive(), item.getLastProcessed(), nextRun, item.getSkippedMonth());
+    }
     private ResponseStatusException notFound(String type) { return new ResponseStatusException(HttpStatus.NOT_FOUND, type + " not found"); }
 }
