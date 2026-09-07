@@ -1,12 +1,17 @@
 package com.fintech.smartwealth.controller;
 
 import com.fintech.smartwealth.security.SecurityUtils;
+import com.fintech.smartwealth.dto.NotificationPreferenceRequest;
+import com.fintech.smartwealth.dto.NotificationPreferenceResponse;
 import com.fintech.smartwealth.dto.NotificationResponse;
 import com.fintech.smartwealth.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.PutMapping;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -41,6 +46,16 @@ public class NotificationController {
     @GetMapping("/unread-count")
     public long unreadCount() {
         return notificationService.countUnread(securityUtils.getCurrentUserId());
+    }
+
+    @GetMapping("/preferences")
+    public NotificationPreferenceResponse preferences() {
+        return notificationService.getPreferences(securityUtils.getCurrentUserId());
+    }
+
+    @PutMapping("/preferences")
+    public NotificationPreferenceResponse updatePreferences(@Valid @RequestBody NotificationPreferenceRequest request) {
+        return notificationService.updatePreferences(securityUtils.getCurrentUserId(), request);
     }
 
     @PatchMapping("/{id}/read")

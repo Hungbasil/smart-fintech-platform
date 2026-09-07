@@ -55,10 +55,26 @@ public class CalendarService {
                 .forEach(debt -> {
                     String message = "Nhắc nợ: khoản " + debt.getCounterpartyName()
                             + " đến hạn ngày " + debt.getDueDate() + " với số tiền " + debt.getAmount() + ".";
-                    notificationService.sendNotification(debt.getUser().getId(), message);
+                                        notificationService.sendNotification(debt.getUser().getId(), message, "DEBT");
                     emailService.sendDebtReminderEmail(debt.getUser().getEmail(), message);
                 });
+                recurringRepository.findAll().stream()
+                                .filter(RecurringTransaction::isActive)
+                                .filter(item -> isWithinReminderWindow(item, today, limit))
+                                .forEach(item -> notificationService.sendNotification(item.getUser().getId(),
+                                                "Nhắc giao dịch định kỳ: " + item.getDescription() + " sẽ thực hiện ngày "
+                                                                + recurringDate(item, today) + " với số tiền " + item.getAmount() + ".", "RECURRING"));
     }
+
+        private boolean isWithinReminderWindow(RecurringTransaction item, LocalDate today, LocalDate limit) {
+                LocalDate dueDate = recurringDate(item, today);
+                return !dueDate.isBefore(today) && !dueDate.isAfter(limit);
+        }
+
+        private LocalDate recurringDate(RecurringTransaction item, LocalDate today) {
+                YearMonth month = YearMonth.from(today);
+                return month.atDay(Math.min(item.getDayOfMonth(), month.lengthOfMonth()));
+        }
 
     private CalendarEventDTO toDebtEvent(Debt debt) {
         return new CalendarEventDTO(debt.getId(), debt.getCounterpartyName(), debt.getDueDate(), debt.getAmount(),

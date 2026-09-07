@@ -309,7 +309,7 @@ public class TransactionService {
                             wallet.getUser().getId(), category.getId(), month.atDay(1).atStartOfDay(), month.plusMonths(1).atDay(1).atStartOfDay());
                     if (spent.compareTo(budget.getAmount()) > 0) {
                         notificationService.sendNotification(wallet.getUser().getId(),
-                                "Budget alert: " + category.getName() + " spending has exceeded your monthly budget.");
+                            "Budget alert: " + category.getName() + " spending has exceeded your monthly budget.", "BUDGET");
                     }
                 });
     }
