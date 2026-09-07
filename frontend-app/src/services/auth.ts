@@ -95,6 +95,8 @@ export const verifyRegistration = (payload: OtpRequest) => api.post('/auth/verif
 export const resendRegistration = (email: string) => api.post('/auth/resend-registration', { email });
 export const forgotPassword = (email: string) => api.post('/auth/forgot-password', { email });
 export const resetPassword = (payload: ResetPasswordRequest) => api.post('/auth/reset-password', payload);
+export const changePassword = (payload: { currentPassword: string; newPassword: string }) => api.post('/account/change-password', payload);
+export const logoutAllSessions = () => api.post('/account/logout-all');
 
 export function logout() {
   const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
@@ -145,4 +147,4 @@ export function getUser(): AuthUser | null {
   }
 }
 
-export default { login, register, logout, completeOAuthLogin, getToken, getUser, isAuthenticated, isAdmin, getUserRole };
+export default { login, register, logout, changePassword, logoutAllSessions, completeOAuthLogin, getToken, getUser, isAuthenticated, isAdmin, getUserRole };

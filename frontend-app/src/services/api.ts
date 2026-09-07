@@ -116,6 +116,9 @@ export interface SavingGoal {
   targetAmount: number;
   currentAmount: number;
   deadline: string | null;
+  requiredMonthlyAmount: number;
+  projectedCompletionDate: string | null;
+  monthlyContributions: Array<{ month: string; amount: number }>;
 }
 
 export const getSavingGoals = () => api.get<SavingGoal[]>('/saving-goals');

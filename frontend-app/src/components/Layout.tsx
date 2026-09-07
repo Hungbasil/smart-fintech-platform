@@ -5,7 +5,8 @@ import AiChatWidget from './AiChatWidget';
 import OnboardingTour from './OnboardingTour';
 import NotificationCenter from './NotificationCenter';
 import QuickAddTransaction from './QuickAddTransaction';
-import { BarChart3, CalendarClock, ChevronDown, ChevronRight, CircleHelp, Goal, HandCoins, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, ReceiptText, ShieldCheck, Tag, Target, WalletCards, Bitcoin, Plus } from 'lucide-react';
+import { BarChart3, CalendarClock, ChevronDown, ChevronRight, CircleHelp, Goal, HandCoins, KeyRound, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, ReceiptText, ShieldCheck, Tag, Target, WalletCards, Bitcoin, Plus, ShieldAlert, X } from 'lucide-react';
+import { getApiErrorMessage, toast } from '../services/notifications';
 
 const navigation = [
   { label: 'Transactions', to: '/transactions', icon: ReceiptText },
@@ -25,6 +26,10 @@ export const Layout: React.FC = () => {
   const [debtsOpen, setDebtsOpen] = useState(location.pathname.startsWith('/debts'));
   const [tourRequest, setTourRequest] = useState(0);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
   const quickAddTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -52,6 +57,33 @@ export const Layout: React.FC = () => {
   const isAdmin = auth.isAdmin();
   const displayName = user?.fullName || user?.email || 'Account';
   const initials = displayName.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase();
+
+  const updatePassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setPasswordSaving(true);
+    try {
+      await auth.changePassword({ currentPassword, newPassword });
+      setCurrentPassword('');
+      setNewPassword('');
+      setAccountSettingsOpen(false);
+      toast.success('Password updated successfully. Other sessions were signed out.');
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Unable to update password'));
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
+
+  const signOutEverywhere = async () => {
+    try {
+      await auth.logoutAllSessions();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Unable to sign out other sessions'));
+    } finally {
+      auth.logout();
+      window.location.href = '/login';
+    }
+  };
 
   return (
     <div className="app-shell flex">
@@ -94,7 +126,7 @@ export const Layout: React.FC = () => {
             <span className="text-[15px] font-extrabold text-[#17212b]">SmartFin</span>
           </div>
           <div className="hidden text-[13px] font-semibold text-[#71808c] lg:block">Personal finance workspace</div>
-          <div className="flex items-center gap-2"><button ref={quickAddTriggerRef} data-tour="quick-add" type="button" aria-label="Quick add transaction" title="Quick add transaction (Ctrl/Cmd + K)" onClick={() => setQuickAddOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#087f74] px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#075c57]"><Plus size={16} /><span className="hidden sm:inline">Add</span></button><NotificationCenter /><div className="relative"><button data-tour="account-menu" type="button" aria-expanded={profileOpen} onClick={() => setProfileOpen((open) => !open)} className="flex min-h-11 items-center gap-2 rounded-full border border-[#e3ebe8] bg-white py-1.5 pl-1.5 pr-3 text-xs font-bold text-[#17212b] shadow-sm"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#dcefeb] text-[11px] text-[#075c57]">{initials}</span>{displayName}<ChevronDown size={14} className={`text-[#9aa7af] transition-transform ${profileOpen ? 'rotate-180' : ''}`} /></button>{profileOpen && <div className="absolute right-0 top-full z-30 mt-2 w-56 rounded-xl border border-[#e3ebe8] bg-white p-2 shadow-lg"><div className="border-b border-[#edf2f0] px-3 py-2"><p className="truncate text-xs font-extrabold text-[#17212b]">{displayName}</p><p className="truncate text-[11px] text-[#9aa7af]">{user?.email}</p></div><button type="button" onClick={() => { setTourRequest((request) => request + 1); setProfileOpen(false); }} className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-bold text-[#087f74] hover:bg-[#e4f4f0]"><CircleHelp size={15} />Take a tour again</button><button type="button" onClick={() => { auth.logout(); window.location.href = '/login'; }} className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-bold text-[#71808c] hover:bg-[#fff1ef] hover:text-[#d76756]"><LogOut size={15} />Sign out</button></div>}</div></div>
+          <div className="flex items-center gap-2"><button ref={quickAddTriggerRef} data-tour="quick-add" type="button" aria-label="Quick add transaction" title="Quick add transaction (Ctrl/Cmd + K)" onClick={() => setQuickAddOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#087f74] px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#075c57]"><Plus size={16} /><span className="hidden sm:inline">Add</span></button><NotificationCenter /><div className="relative"><button data-tour="account-menu" type="button" aria-expanded={profileOpen} onClick={() => setProfileOpen((open) => !open)} className="flex min-h-11 items-center gap-2 rounded-full border border-[#e3ebe8] bg-white py-1.5 pl-1.5 pr-3 text-xs font-bold text-[#17212b] shadow-sm"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#dcefeb] text-[11px] text-[#075c57]">{initials}</span>{displayName}<ChevronDown size={14} className={`text-[#9aa7af] transition-transform ${profileOpen ? 'rotate-180' : ''}`} /></button>{profileOpen && <div className="absolute right-0 top-full z-30 mt-2 w-56 rounded-xl border border-[#e3ebe8] bg-white p-2 shadow-lg"><div className="border-b border-[#edf2f0] px-3 py-2"><p className="truncate text-xs font-extrabold text-[#17212b]">{displayName}</p><p className="truncate text-[11px] text-[#9aa7af]">{user?.email}</p></div><button type="button" onClick={() => { setTourRequest((request) => request + 1); setProfileOpen(false); }} className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-bold text-[#087f74] hover:bg-[#e4f4f0]"><CircleHelp size={15} />Take a tour again</button><button type="button" onClick={() => { setAccountSettingsOpen(true); setProfileOpen(false); }} className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-bold text-[#71808c] hover:bg-[#f1f6f4]"><KeyRound size={15} />Account security</button><button type="button" onClick={signOutEverywhere} className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-bold text-[#d76756] hover:bg-[#fff1ef]"><ShieldAlert size={15} />Sign out everywhere</button><button type="button" onClick={() => { auth.logout(); window.location.href = '/login'; }} className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-bold text-[#71808c] hover:bg-[#fff1ef] hover:text-[#d76756]"><LogOut size={15} />Sign out</button></div>}</div></div>
         </header>
         <main className="app-content">
           <div key={`${location.pathname}${location.search}`} className="route-transition">
@@ -103,6 +135,7 @@ export const Layout: React.FC = () => {
         </main>
         <AiChatWidget />
         <QuickAddTransaction triggerRef={quickAddTriggerRef} open={quickAddOpen} onClose={() => setQuickAddOpen(false)} onSaved={() => { if (location.pathname === '/transactions') window.dispatchEvent(new CustomEvent('smartfin:transactions-refresh')); }} />
+        {accountSettingsOpen && <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#17212b]/35 px-4" role="dialog" aria-modal="true" aria-labelledby="account-security-title"><div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"><div className="mb-5 flex items-start justify-between"><div><p className="eyebrow">Account security</p><h2 id="account-security-title" className="mt-1 text-xl font-extrabold text-[#17212b]">Change password</h2></div><button type="button" aria-label="Close account security" title="Close" onClick={() => setAccountSettingsOpen(false)} className="rounded-lg p-2 text-[#9aa7af] hover:bg-[#f1f6f4] hover:text-[#17212b]"><X size={18} /></button></div><form onSubmit={updatePassword} className="space-y-4"><div><label className="mb-1.5 block text-xs font-bold text-[#71808c]">Current password</label><input required type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74]" /></div><div><label className="mb-1.5 block text-xs font-bold text-[#71808c]">New password</label><input required minLength={8} type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74]" /></div><button disabled={passwordSaving} type="submit" className="inline-flex w-full items-center justify-center rounded-xl bg-[#087f74] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#075c57] disabled:opacity-60">{passwordSaving ? 'Updating...' : 'Update password'}</button></form></div></div>}
         <div data-tour="navigation" className="fixed inset-x-0 bottom-0 z-20 lg:hidden">
           {(analyticsOpen || overviewOpen || debtsOpen) && <div className={`absolute bottom-full mb-2 w-44 rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] p-2 shadow-lg [animation:rise-in_180ms_ease-out] ${debtsOpen ? 'left-[152px]' : analyticsOpen ? 'left-[80px]' : 'left-2'}`}>{overviewOpen && <><NavLink onClick={() => setOverviewOpen(false)} to="/overview" className={({ isActive }) => `block rounded-lg px-3 py-2.5 text-xs font-bold no-underline ${isActive ? 'bg-[#e4f4f0] text-[#075c57]' : 'text-[#71808c] hover:bg-[#f1f6f4]'}`}>Overview</NavLink><NavLink onClick={() => setOverviewOpen(false)} to="/investments" className={({ isActive }) => `block rounded-lg px-3 py-2.5 text-xs font-bold no-underline ${isActive ? 'bg-[#e4f4f0] text-[#075c57]' : 'text-[#71808c] hover:bg-[#f1f6f4]'}`}>Investments</NavLink></>}{analyticsOpen && <><NavLink onClick={() => setAnalyticsOpen(false)} to="/analytics/overview" className={({ isActive }) => `block rounded-lg px-3 py-2.5 text-xs font-bold no-underline ${isActive ? 'bg-[#e4f4f0] text-[#075c57]' : 'text-[#71808c] hover:bg-[#f1f6f4]'}`}>Analytics overview</NavLink><NavLink onClick={() => setAnalyticsOpen(false)} to="/analytics/predictive" className={({ isActive }) => `block rounded-lg px-3 py-2.5 text-xs font-bold no-underline ${isActive ? 'bg-[#e4f4f0] text-[#075c57]' : 'text-[#71808c] hover:bg-[#f1f6f4]'}`}>Forecast</NavLink></>}{debtsOpen && <><NavLink onClick={() => setDebtsOpen(false)} to="/debts" end className={({ isActive }) => `block rounded-lg px-3 py-2.5 text-xs font-bold no-underline ${isActive ? 'bg-[#e4f4f0] text-[#075c57]' : 'text-[#71808c] hover:bg-[#f1f6f4]'}`}>Debts Overview</NavLink><NavLink onClick={() => setDebtsOpen(false)} to="/debts/calendar" className={({ isActive }) => `block rounded-lg px-3 py-2.5 text-xs font-bold no-underline ${isActive ? 'bg-[#e4f4f0] text-[#075c57]' : 'text-[#71808c] hover:bg-[#f1f6f4]'}`}>Calendar</NavLink></>}</div>}
           <nav className="flex overflow-x-auto border-t border-[#e3ebe8] bg-[#fbfdfc]/95 px-2 py-2 backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
