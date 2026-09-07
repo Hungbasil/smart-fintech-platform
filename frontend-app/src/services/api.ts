@@ -47,8 +47,17 @@ export interface NotificationItem {
   createdAt: string;
 }
 
+export interface NotificationPreferences {
+  budgetEnabled: boolean;
+  debtEnabled: boolean;
+  recurringEnabled: boolean;
+}
+
 export const getNotifications = (page = 0, size = 30) =>
   api.get<{ content: NotificationItem[]; totalElements: number }>('/notifications', { params: { page, size } });
+export const getNotificationPreferences = () => api.get<NotificationPreferences>('/notifications/preferences');
+export const updateNotificationPreferences = (preferences: NotificationPreferences) =>
+  api.put<NotificationPreferences>('/notifications/preferences', preferences);
 export const getUnreadNotificationCount = () => api.get<number>('/notifications/unread-count');
 export const markNotificationAsRead = (id: string) => api.patch(`/notifications/${id}/read`);
 export const markAllNotificationsAsRead = () => api.patch('/notifications/read-all');

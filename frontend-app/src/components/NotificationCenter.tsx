@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Bell, CheckCheck, Loader2, Trash2 } from 'lucide-react';
-import { API_BASE_URL, deleteNotification, getNotifications, getUnreadNotificationCount, markAllNotificationsAsRead, markNotificationAsRead, type NotificationItem } from '../services/api';
+import { Bell, CheckCheck, Loader2, Settings2, Trash2 } from 'lucide-react';
+import { API_BASE_URL, deleteNotification, getNotificationPreferences, getNotifications, getUnreadNotificationCount, markAllNotificationsAsRead, markNotificationAsRead, updateNotificationPreferences, type NotificationItem, type NotificationPreferences } from '../services/api';
 import auth from '../services/auth';
 import { getApiErrorMessage, toast } from '../services/notifications';
 
@@ -17,6 +17,9 @@ export const NotificationCenter: React.FC = () => {
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [preferences, setPreferences] = useState<NotificationPreferences>({ budgetEnabled: true, debtEnabled: true, recurringEnabled: true });
+  const [savingPreferences, setSavingPreferences] = useState(false);
 
   const loadNotifications = async () => {
     try {
@@ -34,8 +37,17 @@ export const NotificationCenter: React.FC = () => {
     }
   };
 
+  const loadPreferences = async () => {
+    try {
+      setPreferences((await getNotificationPreferences()).data);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Unable to load notification settings'));
+    }
+  };
+
   useEffect(() => {
     void loadNotifications();
+    void loadPreferences();
     const token = auth.getToken();
     if (!token) return undefined;
 
@@ -47,6 +59,20 @@ export const NotificationCenter: React.FC = () => {
     });
     return () => eventSource.close();
   }, []);
+
+  const togglePreference = async (key: keyof NotificationPreferences) => {
+    const next = { ...preferences, [key]: !preferences[key] };
+    setPreferences(next);
+    setSavingPreferences(true);
+    try {
+      setPreferences((await updateNotificationPreferences(next)).data);
+    } catch (error) {
+      setPreferences(preferences);
+      toast.error(getApiErrorMessage(error, 'Unable to save notification settings'));
+    } finally {
+      setSavingPreferences(false);
+    }
+  };
 
   const markRead = async (id: string) => {
     const target = items.find((item) => item.id === id);
@@ -89,7 +115,8 @@ export const NotificationCenter: React.FC = () => {
         {unread > 0 && <span className="absolute right-1 top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-[#d76756] px-1 text-[9px] font-extrabold text-white">{unread > 99 ? '99+' : unread}</span>}
       </button>
       {open && <div className="absolute right-0 top-full z-40 mt-2 w-[min(360px,calc(100vw-32px))] overflow-hidden rounded-2xl border border-[#e3ebe8] bg-white shadow-lg">
-        <div className="flex items-center justify-between border-b border-[#edf2f0] px-4 py-3"><div><h2 className="text-sm font-extrabold text-[#17212b]">Notifications</h2><p className="text-[11px] text-[#9aa7af]">{unread ? `${unread} unread` : 'All caught up'}</p></div><button type="button" onClick={() => void markAllRead()} disabled={!unread} className="inline-flex items-center gap-1 text-[11px] font-bold text-[#087f74] disabled:opacity-40"><CheckCheck size={14} />Mark all read</button></div>
+        <div className="flex items-center justify-between border-b border-[#edf2f0] px-4 py-3"><div><h2 className="text-sm font-extrabold text-[#17212b]">Notifications</h2><p className="text-[11px] text-[#9aa7af]">{unread ? `${unread} unread` : 'All caught up'}</p></div><div className="flex items-center gap-3"><button type="button" aria-label="Notification settings" title="Notification settings" onClick={() => setShowSettings((value) => !value)} className={`rounded-lg p-1.5 text-[#71808c] hover:bg-[#e4f4f0] hover:text-[#087f74] ${showSettings ? 'bg-[#e4f4f0] text-[#087f74]' : ''}`}><Settings2 size={15} /></button><button type="button" onClick={() => void markAllRead()} disabled={!unread} className="inline-flex items-center gap-1 text-[11px] font-bold text-[#087f74] disabled:opacity-40"><CheckCheck size={14} />Mark all read</button></div></div>
+        {showSettings && <div className="border-b border-[#edf2f0] bg-[#fbfdfc] px-4 py-3"><div className="mb-2 flex items-center justify-between"><p className="text-xs font-extrabold text-[#17212b]">Alert settings</p><span className="text-[10px] text-[#9aa7af]">{savingPreferences ? 'Saving...' : 'Saved automatically'}</span></div><div className="space-y-2 text-xs text-[#71808c]"><label className="flex items-center justify-between gap-3"><span>Budget alerts</span><input type="checkbox" checked={preferences.budgetEnabled} onChange={() => void togglePreference('budgetEnabled')} /></label><label className="flex items-center justify-between gap-3"><span>Debt reminders</span><input type="checkbox" checked={preferences.debtEnabled} onChange={() => void togglePreference('debtEnabled')} /></label><label className="flex items-center justify-between gap-3"><span>Recurring reminders</span><input type="checkbox" checked={preferences.recurringEnabled} onChange={() => void togglePreference('recurringEnabled')} /></label></div></div>}
         <div className="max-h-[min(420px,60vh)] overflow-y-auto">
           {loading && <div className="flex items-center justify-center gap-2 px-4 py-10 text-sm text-[#71808c]"><Loader2 size={16} className="animate-spin" />Loading notifications</div>}
           {!loading && items.length === 0 && <div className="px-4 py-10 text-center text-sm text-[#9aa7af]">No notifications yet.</div>}
