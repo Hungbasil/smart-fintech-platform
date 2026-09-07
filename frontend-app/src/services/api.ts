@@ -160,7 +160,10 @@ export const getWallets = () => api.get<Wallet[]>('/wallets');
 export const getDebtCalendar = () => api.get<CalendarEvent[]>('/calendar/debts');
 
 export interface AnalyticsQuery {
+  [key: string]: string | undefined;
   walletId?: string;
+  categoryId?: string;
+  type?: string;
   fromDate?: string;
   toDate?: string;
 }

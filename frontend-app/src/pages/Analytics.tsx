@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { Download } from 'lucide-react';
 import { Card, CardHeader, CardBody, PageState } from '../components';
-import api, { getAnalyticsCategories, getAnalyticsMonthly, getAnalyticsSummary, type AnalyticsSummary } from '../services/api';
+import api, { getAnalyticsCategories, getAnalyticsMonthly, getAnalyticsSummary, getWallets, type AnalyticsSummary, type AnalyticsQuery } from '../services/api';
 import { currency } from '../services/format';
 import { getApiErrorMessage, toast } from '../services/notifications';
 
@@ -18,6 +18,12 @@ interface MonthlyAnalytics {
   expense: number;
 }
 
+interface FilterOption {
+  id: string;
+  name: string;
+  type?: string;
+}
+
 const palette = ['#087f74', '#d76756', '#bd7a22', '#4c8d9a', '#8c6f56', '#6b7c70'];
 
 export const Analytics: React.FC = () => {
@@ -29,15 +35,39 @@ export const Analytics: React.FC = () => {
   const [exporting, setExporting] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [wallets, setWallets] = useState<FilterOption[]>([]);
+  const [categories, setCategories] = useState<FilterOption[]>([]);
+  const [walletId, setWalletId] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [type, setType] = useState('');
+
+  const query: AnalyticsQuery = {
+    walletId: walletId || undefined,
+    categoryId: categoryId || undefined,
+    type: type || undefined,
+    fromDate: dateFrom ? `${dateFrom}T00:00:00` : undefined,
+    toDate: dateTo ? `${dateTo}T23:59:59` : undefined,
+  };
+
+  const exportRange = dateFrom || dateTo ? `${dateFrom || 'start'}_to_${dateTo || 'today'}` : 'all-time';
+
+  useEffect(() => {
+    Promise.all([getWallets(), api.get<FilterOption[]>('/categories')])
+      .then(([walletResponse, categoryResponse]) => {
+        setWallets(walletResponse.data);
+        setCategories(categoryResponse.data);
+      })
+      .catch((err) => toast.error(getApiErrorMessage(err, 'Unable to load report filters')));
+  }, []);
 
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
         setLoading(true);
         const [summaryResponse, categoryResponse, monthlyResponse] = await Promise.all([
-          getAnalyticsSummary({ fromDate: dateFrom || undefined, toDate: dateTo || undefined }),
-          getAnalyticsCategories({ fromDate: dateFrom || undefined, toDate: dateTo || undefined }),
-          getAnalyticsMonthly({ fromDate: dateFrom || undefined, toDate: dateTo || undefined }),
+          getAnalyticsSummary(query),
+          getAnalyticsCategories(query),
+          getAnalyticsMonthly(query),
         ]);
         setSummary(summaryResponse.data);
         setCategoryData(categoryResponse.data.map((item, index) => ({ ...item, color: palette[index % palette.length] })));
@@ -50,16 +80,34 @@ export const Analytics: React.FC = () => {
     };
 
     fetchAnalytics();
-  }, [dateFrom, dateTo]);
+  }, [dateFrom, dateTo, walletId, categoryId, type]);
+
+  const exportCsv = async () => {
+    try {
+      setExporting(true);
+      const response = await api.get('/analytics/export/csv', { params: query, responseType: 'blob' });
+      const url = window.URL.createObjectURL(response.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `financial_transactions_${exportRange}.csv`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      toast.success('CSV report downloaded');
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Unable to export CSV report'));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const exportPdf = async () => {
     try {
       setExporting(true);
-      const response = await api.get('/analytics/export/pdf', { responseType: 'blob' });
+      const response = await api.get('/analytics/export/pdf', { params: query, responseType: 'blob' });
       const url = window.URL.createObjectURL(response.data);
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'financial_report.pdf';
+      link.download = `financial_report_${exportRange}.pdf`;
       link.click();
       window.URL.revokeObjectURL(url);
       toast.success('Financial report downloaded');
@@ -74,12 +122,15 @@ export const Analytics: React.FC = () => {
 
   return (
     <div className="animate-fade-in">
-      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="eyebrow">Patterns and insights</div><h1 className="page-title">Analytics</h1><p className="page-subtitle">Aggregated directly by PostgreSQL for the selected period.</p></div><button type="button" onClick={exportPdf} disabled={exporting} className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#087f74] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#075c57] disabled:cursor-not-allowed disabled:opacity-50"><Download size={17} />{exporting ? 'Preparing PDF...' : 'Download PDF report'}</button></div>
+      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="eyebrow">Patterns and insights</div><h1 className="page-title">Analytics</h1><p className="page-subtitle">Aggregated directly by PostgreSQL for the selected period.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={exportCsv} disabled={exporting} className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#e3ebe8] bg-white px-4 py-2.5 text-sm font-bold text-[#087f74] shadow-sm transition hover:bg-[#e4f4f0] disabled:opacity-50"><Download size={17} />CSV</button><button type="button" onClick={exportPdf} disabled={exporting} className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#087f74] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#075c57] disabled:cursor-not-allowed disabled:opacity-50"><Download size={17} />{exporting ? 'Preparing...' : 'PDF report'}</button></div></div>
 
-      <div className="mb-7 flex flex-col gap-3 rounded-2xl border border-[#e3ebe8] bg-white p-4 shadow-sm sm:flex-row sm:items-end">
+      <div className="mb-7 grid grid-cols-1 gap-3 rounded-2xl border border-[#e3ebe8] bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-5 lg:items-end">
+        <div><label htmlFor="analytics-wallet" className="mb-1.5 block text-xs font-bold text-[#71808c]">Wallet</label><select id="analytics-wallet" value={walletId} onChange={(event) => setWalletId(event.target.value)} className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74]"><option value="">All wallets</option>{wallets.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div>
+        <div><label htmlFor="analytics-category" className="mb-1.5 block text-xs font-bold text-[#71808c]">Category</label><select id="analytics-category" value={categoryId} onChange={(event) => setCategoryId(event.target.value)} className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74]"><option value="">All categories</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div>
+        <div><label htmlFor="analytics-type" className="mb-1.5 block text-xs font-bold text-[#71808c]">Transaction type</label><select id="analytics-type" value={type} onChange={(event) => setType(event.target.value)} className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74]"><option value="">Income and expense</option><option value="INCOME">Income</option><option value="EXPENSE">Expense</option></select></div>
         <div className="flex-1"><label htmlFor="analytics-from" className="mb-1.5 block text-xs font-bold text-[#71808c]">From</label><input id="analytics-from" type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74] focus:ring-2 focus:ring-[#e4f4f0]" /></div>
         <div className="flex-1"><label htmlFor="analytics-to" className="mb-1.5 block text-xs font-bold text-[#71808c]">To</label><input id="analytics-to" type="date" value={dateTo} min={dateFrom || undefined} onChange={(event) => setDateTo(event.target.value)} className="w-full rounded-xl border border-[#e3ebe8] bg-[#fbfdfc] px-3 py-2.5 text-sm outline-none focus:border-[#087f74] focus:ring-2 focus:ring-[#e4f4f0]" /></div>
-        <button type="button" onClick={() => { setDateFrom(''); setDateTo(''); }} disabled={!dateFrom && !dateTo} className="rounded-xl border border-[#e3ebe8] px-4 py-2.5 text-sm font-bold text-[#71808c] transition hover:bg-[#f4f7f6] disabled:cursor-not-allowed disabled:opacity-50">All time</button>
+        <button type="button" onClick={() => { setDateFrom(''); setDateTo(''); setWalletId(''); setCategoryId(''); setType(''); }} disabled={!dateFrom && !dateTo && !walletId && !categoryId && !type} className="rounded-xl border border-[#e3ebe8] px-4 py-2.5 text-sm font-bold text-[#71808c] transition hover:bg-[#f4f7f6] disabled:cursor-not-allowed disabled:opacity-50">Clear filters</button>
       </div>
 
       <div className="mb-7 grid grid-cols-1 gap-4 md:grid-cols-3">
