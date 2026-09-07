@@ -50,11 +50,15 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
                                                                                                 WHERE t.transaction_type <> 'TRANSFER'
                                                                                                         AND (:userId IS NULL OR w.user_id = :userId)
                                                                                                         AND (:walletId IS NULL OR t.wallet_id = :walletId)
+                                                                                                        AND (:categoryId IS NULL OR t.category_id = :categoryId)
+                                                                                                        AND (:type IS NULL OR :type = '' OR UPPER(c.type) = UPPER(:type))
                                                                                                         AND (CAST(:fromDate AS timestamp) IS NULL OR t.transaction_date >= CAST(:fromDate AS timestamp))
                                                                                                         AND (CAST(:toDate AS timestamp) IS NULL OR t.transaction_date < CAST(:toDate AS timestamp))
                         """, nativeQuery = true)
                                 AnalyticsSummaryProjection getAnalyticsSummary(@Param("userId") UUID userId,
                                                                                                                                                                                                                                 @Param("walletId") UUID walletId,
+                                                                                                                                                                                                                                        @Param("categoryId") UUID categoryId,
+                                                                                                                                                                                                                                        @Param("type") String type,
                                                                                                                                                                                                                                 @Param("fromDate") LocalDateTime fromDate,
                                                                                                                                                                                                                                 @Param("toDate") LocalDateTime toDate);
 
@@ -67,6 +71,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
                                                                                                         AND t.transaction_type <> 'TRANSFER'
                                                                                                         AND (:userId IS NULL OR w.user_id = :userId)
                                                                                                         AND (:walletId IS NULL OR t.wallet_id = :walletId)
+                                                                                                        AND (:categoryId IS NULL OR t.category_id = :categoryId)
+                                                                                                        AND (:type IS NULL OR :type = '' OR UPPER(c.type) = UPPER(:type))
                                                                                                         AND (CAST(:fromDate AS timestamp) IS NULL OR t.transaction_date >= CAST(:fromDate AS timestamp))
                                                                                                         AND (CAST(:toDate AS timestamp) IS NULL OR t.transaction_date < CAST(:toDate AS timestamp))
                         GROUP BY c.name
@@ -75,6 +81,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
                         """, nativeQuery = true)
         java.util.List<AnalyticsCategoryProjection> getExpenseByCategory(@Param("userId") UUID userId,
                                                                           @Param("walletId") UUID walletId,
+                                                                          @Param("categoryId") UUID categoryId,
+                                                                          @Param("type") String type,
                                                                           @Param("fromDate") LocalDateTime fromDate,
                                                                           @Param("toDate") LocalDateTime toDate);
 
@@ -90,11 +98,15 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
                           AND t.transaction_date < :toDate
                                                                                                         AND (:userId IS NULL OR w.user_id = :userId)
                                                                                                         AND (:walletId IS NULL OR t.wallet_id = :walletId)
+                                                                                                        AND (:categoryId IS NULL OR t.category_id = :categoryId)
+                                                                                                        AND (:type IS NULL OR :type = '' OR UPPER(c.type) = UPPER(:type))
                         GROUP BY DATE_TRUNC('month', t.transaction_date)
                         ORDER BY DATE_TRUNC('month', t.transaction_date)
                         """, nativeQuery = true)
         java.util.List<AnalyticsMonthlyProjection> getMonthlyAnalytics(@Param("userId") UUID userId,
                                                                                                                                         @Param("walletId") UUID walletId,
+                                                                                                                                        @Param("categoryId") UUID categoryId,
+                                                                                                                                        @Param("type") String type,
                                                                                                                                         @Param("fromDate") LocalDateTime fromDate,
                                                                                                                                         @Param("toDate") LocalDateTime toDate);
 

@@ -127,7 +127,7 @@ public class AiChatController {
             .map(wallet -> wallet.getBalance() == null ? BigDecimal.ZERO : wallet.getBalance())
             .reduce(BigDecimal.ZERO, BigDecimal::add);
         LocalDateTime monthStart = LocalDate.now().withDayOfMonth(1).atStartOfDay();
-        var summary = analyticsService.getSummary(null, monthStart, monthStart.plusMonths(1));
+        var summary = analyticsService.getSummary(null, null, null, monthStart, monthStart.plusMonths(1));
         String budgets = budgetService.findAll().stream()
             .map(budget -> budget.categoryName() + ": " + budget.totalSpent() + "/" + budget.budgetAmount()
                 + " (" + budget.percentage().setScale(0, java.math.RoundingMode.HALF_UP) + "%)")

@@ -29,27 +29,27 @@ public class AnalyticsService {
     private final WalletRepository walletRepository;
 
     @Cacheable(value = "user_analytics", key = "'summary:' + @securityUtils.getCurrentUserId() + ':' + #walletId + ':' + #fromDate + ':' + #toDate", condition = "!@securityUtils.isAdmin()")
-    public AnalyticsSummaryResponse getSummary(UUID walletId, LocalDateTime fromDate, LocalDateTime toDate) {
+    public AnalyticsSummaryResponse getSummary(UUID walletId, UUID categoryId, String type, LocalDateTime fromDate, LocalDateTime toDate) {
         TransactionRepository.AnalyticsSummaryProjection result = transactionRepository
-                .getAnalyticsSummary(currentUserId(), walletId, fromDate, toDate);
+                .getAnalyticsSummary(currentUserId(), walletId, categoryId, type, fromDate, toDate);
         BigDecimal income = valueOrZero(result.getIncome());
         BigDecimal expense = valueOrZero(result.getExpense());
         return new AnalyticsSummaryResponse(income, expense, income.subtract(expense), result.getTransactionCount());
     }
 
     @Cacheable(value = "user_analytics", key = "'categories:' + @securityUtils.getCurrentUserId() + ':' + #walletId + ':' + #fromDate + ':' + #toDate", condition = "!@securityUtils.isAdmin()")
-    public List<AnalyticsCategoryResponse> getExpenseByCategory(UUID walletId, LocalDateTime fromDate, LocalDateTime toDate) {
-        return transactionRepository.getExpenseByCategory(currentUserId(), walletId, fromDate, toDate).stream()
+    public List<AnalyticsCategoryResponse> getExpenseByCategory(UUID walletId, UUID categoryId, String type, LocalDateTime fromDate, LocalDateTime toDate) {
+        return transactionRepository.getExpenseByCategory(currentUserId(), walletId, categoryId, type, fromDate, toDate).stream()
                 .map(item -> new AnalyticsCategoryResponse(item.getCategory(), valueOrZero(item.getAmount())))
                 .toList();
     }
 
     @Cacheable(value = "user_analytics", key = "'monthly:' + @securityUtils.getCurrentUserId() + ':' + #walletId + ':' + #fromDate + ':' + #toDate", condition = "!@securityUtils.isAdmin()")
-    public List<AnalyticsMonthlyResponse> getMonthlyAnalytics(UUID walletId, LocalDateTime fromDate, LocalDateTime toDate) {
+    public List<AnalyticsMonthlyResponse> getMonthlyAnalytics(UUID walletId, UUID categoryId, String type, LocalDateTime fromDate, LocalDateTime toDate) {
         LocalDate firstMonth = LocalDate.now().withDayOfMonth(1).minusMonths(5);
         LocalDateTime effectiveFrom = fromDate == null ? firstMonth.atStartOfDay() : fromDate;
         LocalDateTime effectiveTo = toDate == null ? LocalDate.now().plusDays(1).atStartOfDay() : toDate;
-        return transactionRepository.getMonthlyAnalytics(currentUserId(), walletId, effectiveFrom, effectiveTo).stream()
+        return transactionRepository.getMonthlyAnalytics(currentUserId(), walletId, categoryId, type, effectiveFrom, effectiveTo).stream()
                 .map(item -> new AnalyticsMonthlyResponse(
                         item.getMonth(),
                         valueOrZero(item.getIncome()),

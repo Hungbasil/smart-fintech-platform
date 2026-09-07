@@ -4,6 +4,8 @@ import com.fintech.smartwealth.entity.Transaction;
 import com.fintech.smartwealth.entity.User;
 import com.fintech.smartwealth.repository.TransactionRepository;
 import com.fintech.smartwealth.repository.UserRepository;
+import com.fintech.smartwealth.repository.WalletRepository;
+import com.fintech.smartwealth.repository.CategoryRepository;
 import com.fintech.smartwealth.security.SecurityUtils;
 import com.lowagie.text.Document;
 import com.lowagie.text.DocumentException;
@@ -20,6 +22,8 @@ import com.lowagie.text.pdf.PdfPageEventHelper;
 import com.lowagie.text.pdf.PdfWriter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.io.ByteArrayOutputStream;
 import java.time.format.DateTimeFormatter;
@@ -33,7 +37,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PdfExportService {
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-    private static final DateTimeFormatter MONTH_FORMAT = DateTimeFormatter.ofPattern("MM/yyyy");
+    private static final DateTimeFormatter DATE_ONLY_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final NumberFormat MONEY_FORMAT = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("vi-VN"));
     private static final java.awt.Color TEAL = new java.awt.Color(8, 127, 116);
     private static final java.awt.Color INK = new java.awt.Color(23, 33, 43);
@@ -44,17 +48,33 @@ public class PdfExportService {
 
     private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
+    private final WalletRepository walletRepository;
+    private final CategoryRepository categoryRepository;
     private final SecurityUtils securityUtils;
 
     public byte[] generateMonthlyReport(UUID userId) {
+        var month = LocalDate.now().withDayOfMonth(1);
+        return generateReport(userId, null, null, null, month.atStartOfDay(), month.plusMonths(1).atStartOfDay());
+    }
+
+    public byte[] generateCurrentUserReport(UUID walletId, UUID categoryId, String type,
+                                            java.time.LocalDateTime fromDate,
+                                            java.time.LocalDateTime toDate) {
+        return generateReport(securityUtils.getCurrentUserId(), walletId, categoryId, type, fromDate, toDate);
+    }
+
+    private byte[] generateReport(UUID userId, UUID walletId, UUID categoryId, String type,
+                                  java.time.LocalDateTime fromDate,
+                                  java.time.LocalDateTime toDate) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        var month = LocalDate.now().withDayOfMonth(1);
         var summaryProjection = transactionRepository.getAnalyticsSummary(
-            userId, null, month.atStartOfDay(), month.plusMonths(1).atStartOfDay());
+            userId, walletId, categoryId, type, fromDate, toDate);
         var income = summaryProjection.getIncome() == null ? java.math.BigDecimal.ZERO : summaryProjection.getIncome();
         var expense = summaryProjection.getExpense() == null ? java.math.BigDecimal.ZERO : summaryProjection.getExpense();
-        var transactions = transactionRepository.findTop10ByWalletUserIdOrderByTransactionDateDesc(userId);
+        var transactions = transactionRepository.findAllByWalletUserIdAndFilters(
+                userId, walletId, categoryId, type, fromDate, toDate, "",
+            Pageable.unpaged(Sort.by(Sort.Direction.DESC, "transactionDate"))).getContent();
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         try {
@@ -63,27 +83,33 @@ public class PdfExportService {
             writer.setPageEvent(new ReportFooter());
             document.open();
 
-            addHeader(document, user, month);
-            addSectionTitle(document, "TONG QUAN THANG");
+            addHeader(document, user, fromDate, toDate, walletId, categoryId, type, transactions.size());
+            addSectionTitle(document, "TONG QUAN BAO CAO");
             addSummaryCards(document, income, expense, income.subtract(expense));
-            addSectionTitle(document, "10 GIAO DICH GAN NHAT");
+            addSectionTitle(document, "CHI TIET GIAO DICH");
 
-            PdfPTable table = new PdfPTable(new float[]{2.1f, 4.2f, 2.1f});
+            PdfPTable table = new PdfPTable(new float[]{1.7f, 2.8f, 1.5f, 1.8f, 1.8f, 1.6f});
             table.setWidthPercentage(100);
             table.setSpacingBefore(4);
             table.setHeaderRows(1);
             addHeader(table, "Ngay");
             addHeader(table, "Mo ta");
+            addHeader(table, "Loai");
+            addHeader(table, "Vi");
+            addHeader(table, "Danh muc");
             addHeader(table, "So tien");
             for (int index = 0; index < transactions.size(); index++) {
                 Transaction transaction = transactions.get(index);
                 addCell(table, transaction.getTransactionDate().format(DATE_FORMAT), index % 2 == 1, Element.ALIGN_LEFT);
                 addCell(table, safe(transaction.getDescription()), index % 2 == 1, Element.ALIGN_LEFT);
+                addCell(table, safe(transaction.getCategory().getType()), index % 2 == 1, Element.ALIGN_LEFT);
+                addCell(table, safe(transaction.getWallet().getName()), index % 2 == 1, Element.ALIGN_LEFT);
+                addCell(table, safe(transaction.getCategory().getName()), index % 2 == 1, Element.ALIGN_LEFT);
                 addCell(table, formatMoney(transaction.getAmount()), index % 2 == 1, Element.ALIGN_RIGHT);
             }
             if (transactions.isEmpty()) {
                 PdfPCell empty = new PdfPCell(new Phrase("Chua co giao dich trong thang nay", bodyFont(MUTED)));
-                empty.setColspan(3);
+                empty.setColspan(6);
                 empty.setPadding(12);
                 empty.setHorizontalAlignment(Element.ALIGN_CENTER);
                 empty.setBorderColor(LINE);
@@ -97,10 +123,6 @@ public class PdfExportService {
         }
     }
 
-    public byte[] generateCurrentUserReport() {
-        return generateMonthlyReport(securityUtils.getCurrentUserId());
-    }
-
     private void addHeader(PdfPTable table, String text) {
         PdfPCell cell = new PdfPCell(new Phrase(text, bodyFont(java.awt.Color.WHITE, Font.BOLD)));
         cell.setBackgroundColor(TEAL);
@@ -110,7 +132,13 @@ public class PdfExportService {
         table.addCell(cell);
     }
 
-    private void addHeader(Document document, User user, LocalDate month) throws DocumentException {
+    private void addHeader(Document document, User user,
+                           java.time.LocalDateTime fromDate,
+                           java.time.LocalDateTime toDate,
+                           UUID walletId,
+                           UUID categoryId,
+                           String type,
+                           int transactionCount) throws DocumentException {
         PdfPTable header = new PdfPTable(new float[]{1.4f, 3.6f});
         header.setWidthPercentage(100);
         header.setSpacingAfter(20);
@@ -126,7 +154,7 @@ public class PdfExportService {
         Paragraph heading = new Paragraph("BAO CAO TAI CHINH", bodyFont(INK, Font.BOLD, 19));
         heading.setAlignment(Element.ALIGN_RIGHT);
         title.addElement(heading);
-        Paragraph period = new Paragraph("Thang " + month.format(MONTH_FORMAT), bodyFont(TEAL, Font.BOLD, 11));
+        Paragraph period = new Paragraph("Pham vi: " + formatRange(fromDate, toDate), bodyFont(TEAL, Font.BOLD, 11));
         period.setAlignment(Element.ALIGN_RIGHT);
         title.addElement(period);
         header.addCell(title);
@@ -136,8 +164,30 @@ public class PdfExportService {
         profile.setWidthPercentage(100);
         profile.setSpacingAfter(20);
         addProfileCell(profile, "TAI KHOAN", safe(user.getFullName()) + "  |  " + user.getEmail());
-        addProfileCell(profile, "PHAM VI", "Tong hop cac vi va giao dich cua tai khoan");
+        addProfileCell(profile, "PHAM VI", formatFilters(user.getId(), walletId, categoryId, type));
+        addProfileCell(profile, "SO LIEU", transactionCount + " giao dich | Tao luc " + java.time.LocalDateTime.now().format(DATE_FORMAT));
         document.add(profile);
+    }
+
+    private String formatRange(java.time.LocalDateTime fromDate, java.time.LocalDateTime toDate) {
+        if (fromDate == null && toDate == null) return "Tat ca thoi gian";
+        String from = fromDate == null ? "Bat dau" : fromDate.toLocalDate().format(DATE_ONLY_FORMAT);
+        String to = toDate == null ? "Hien tai" : toDate.toLocalDate().format(DATE_ONLY_FORMAT);
+        return from + " - " + to;
+    }
+
+    private String formatFilters(UUID userId, UUID walletId, UUID categoryId, String type) {
+        StringBuilder filters = new StringBuilder("Tat ca vi");
+        if (walletId != null) {
+            String walletName = walletRepository.findByIdAndUserId(walletId, userId).map(wallet -> wallet.getName()).orElse("Khong xac dinh");
+            filters = new StringBuilder("Vi: ").append(walletName);
+        }
+        if (categoryId != null) {
+            String categoryName = categoryRepository.findAvailableById(categoryId, userId).map(category -> category.getName()).orElse("Khong xac dinh");
+            filters.append(" | Danh muc: ").append(categoryName);
+        }
+        if (type != null && !type.isBlank()) filters.append(" | Loai: ").append(type);
+        return filters.toString();
     }
 
     private void addProfileCell(PdfPTable table, String label, String value) {
