@@ -34,6 +34,7 @@ public class RecurringTransactionService {
         UUID userId = securityUtils.getCurrentUserId();
         User user = userRepository.findById(userId).orElseThrow(() -> notFound("User"));
         Wallet wallet = walletRepository.findByIdAndUserId(request.getWalletId(), userId).orElseThrow(() -> notFound("Wallet"));
+        ensureWalletIsActive(wallet);
         Category category = categoryRepository.findByIdAndUserId(request.getCategoryId(), userId).orElseThrow(() -> notFound("Category"));
         RecurringTransaction item = id == null ? new RecurringTransaction() : recurringRepository.findByIdAndUserId(id, userId).orElseThrow(() -> notFound("Recurring transaction"));
         item.setUser(user); item.setWallet(wallet); item.setCategory(category); item.setAmount(request.getAmount()); item.setDescription(request.getDescription()); item.setDayOfMonth(request.getDayOfMonth()); item.setActive(request.isActive());
@@ -64,6 +65,7 @@ public class RecurringTransactionService {
         LocalDate today = LocalDate.now();
         String executionMonth = YearMonth.from(today).toString();
         for (RecurringTransaction item : recurringRepository.findByActiveTrue()) {
+            if (item.getWallet().isFrozen()) continue;
             int effectiveDay = Math.min(item.getDayOfMonth(), YearMonth.from(today).lengthOfMonth());
             if (effectiveDay > today.getDayOfMonth()
                     || executionMonth.equals(item.getSkippedMonth())
@@ -95,4 +97,10 @@ public class RecurringTransactionService {
         return new RecurringTransactionResponse(item.getId(), item.getWallet().getId(), item.getCategory().getId(), item.getDescription(), item.getAmount(), item.getDayOfMonth(), item.isActive(), item.getLastProcessed(), nextRun, item.getSkippedMonth());
     }
     private ResponseStatusException notFound(String type) { return new ResponseStatusException(HttpStatus.NOT_FOUND, type + " not found"); }
+
+    private void ensureWalletIsActive(Wallet wallet) {
+        if (wallet.isFrozen()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Wallet is frozen");
+        }
+    }
 }

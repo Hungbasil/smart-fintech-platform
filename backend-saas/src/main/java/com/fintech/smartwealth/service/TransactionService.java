@@ -113,6 +113,7 @@ public class TransactionService {
         if (!securityUtils.isAdmin() && !wallet.getUser().getId().equals(securityUtils.getCurrentUserId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
         }
+        ensureWalletIsActive(wallet);
         validateCategoryOwnership(category, wallet.getUser().getId());
 
         Transaction transaction = new Transaction();
@@ -352,6 +353,9 @@ public class TransactionService {
             }
         }
 
+        ensureWalletIsActive(fromWallet);
+        ensureWalletIsActive(toWallet);
+
         if (fromWallet.getBalance().compareTo(request.getAmount()) < 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient wallet balance");
         }
@@ -468,6 +472,12 @@ public class TransactionService {
         }
 
         return transactionRepository.sumExpenseByWalletId(walletId);
+    }
+
+    private void ensureWalletIsActive(Wallet wallet) {
+        if (wallet.isFrozen()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Wallet is frozen");
+        }
     }
 
     private BigDecimal resolveDelta(Transaction transaction) {

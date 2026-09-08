@@ -161,6 +161,26 @@ class TransactionServiceTest {
     }
 
     @Test
+    void createShouldRejectFrozenWallet() {
+        UUID userId = UUID.randomUUID();
+        Wallet wallet = wallet(userId, "100.00");
+        wallet.setFrozen(true);
+        CreateTransactionRequest request = new CreateTransactionRequest();
+        request.setWalletId(wallet.getId());
+        request.setCategoryId(UUID.randomUUID());
+        request.setAmount(new BigDecimal("10.00"));
+
+        when(walletRepository.findById(wallet.getId())).thenReturn(Optional.of(wallet));
+        when(categoryRepository.findById(request.getCategoryId())).thenReturn(Optional.of(new Category()));
+        when(securityUtils.isAdmin()).thenReturn(false);
+        when(securityUtils.getCurrentUserId()).thenReturn(userId);
+
+        assertThatThrownBy(() -> transactionService.create(request))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .hasMessageContaining("Wallet is frozen");
+    }
+
+    @Test
     void createAnomalousExpenseShouldSendNotificationAfterSaving() {
         UUID userId = UUID.randomUUID();
         Wallet wallet = wallet(userId, "1000000.00");
@@ -273,6 +293,28 @@ class TransactionServiceTest {
         assertThat(toWallet.getBalance()).isEqualByComparingTo("65.00");
         assertThat(response.getType()).isEqualTo("TRANSFER");
         verify(transactionRepository, org.mockito.Mockito.times(2)).save(any(Transaction.class));
+    }
+
+    @Test
+    void transferShouldRejectFrozenSourceWallet() {
+        UUID userId = UUID.randomUUID();
+        Wallet fromWallet = wallet(userId, "100.00");
+        Wallet toWallet = wallet(userId, "25.00");
+        fromWallet.setFrozen(true);
+
+        TransferRequest request = new TransferRequest();
+        request.setFromWalletId(fromWallet.getId());
+        request.setToWalletId(toWallet.getId());
+        request.setAmount(new BigDecimal("40.00"));
+
+        when(walletRepository.findById(fromWallet.getId())).thenReturn(Optional.of(fromWallet));
+        when(walletRepository.findById(toWallet.getId())).thenReturn(Optional.of(toWallet));
+        when(securityUtils.isAdmin()).thenReturn(false);
+        when(securityUtils.getCurrentUserId()).thenReturn(userId);
+
+        assertThatThrownBy(() -> transactionService.transferFunds(request))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .hasMessageContaining("Wallet is frozen");
     }
 
     @Test
