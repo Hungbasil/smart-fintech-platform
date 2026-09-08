@@ -385,7 +385,8 @@ export const getAdminFinancialHealth = () => api.get<AdminFinancialHealthDTO>('/
 // Admin System Health
 export interface DatabaseHealthDTO {
   status: string;
-  timestamp: string;
+  message: string;
+  responseTime: number;
 }
 
 export interface SystemHealthDTO {
@@ -399,6 +400,22 @@ export interface SystemHealthDTO {
 }
 
 export const getSystemHealth = () => api.get<SystemHealthDTO>('/admin/health');
+
+export interface AuditLogResponse {
+  id: string;
+  actorUserId?: string | null;
+  actorEmail?: string | null;
+  actionType: string;
+  description: string;
+  targetId?: string | null;
+  ipAddress?: string | null;
+  createdAt: string;
+}
+
+export const getAdminAuditLogs = (page = 0, size = 10) =>
+  api.get<{ content: AuditLogResponse[]; totalElements: number; totalPages: number }>('/admin/audit-logs', {
+    params: { page, size },
+  });
 
 api.interceptors.request.use(
   (config) => {

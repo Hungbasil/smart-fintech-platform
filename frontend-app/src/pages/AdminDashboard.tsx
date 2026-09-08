@@ -42,6 +42,8 @@ import {
   getAdminTransactionAnalytics,
   getAdminUserAnalytics,
   getAdminFinancialHealth,
+  getSystemHealth,
+  getAdminAuditLogs,
   getAdminUsers,
   getAdminWallets,
   getTransactions,
@@ -57,11 +59,20 @@ import type {
   AdminTransactionAnalyticsDTO,
   AdminUserAnalyticsDTO,
   AdminFinancialHealthDTO,
+  SystemHealthDTO,
   UserDTO,
   Wallet as WalletType,
 } from '../services/api';
 
 const formatMoney = (value: number | undefined | null) => `₫${(value ?? 0).toLocaleString('en-US')}`;
+const formatBytes = (value: number | undefined | null) => `${((value ?? 0) / (1024 * 1024)).toFixed(0)} MB`;
+const formatUptime = (value: number | undefined | null) => {
+  const totalSeconds = Math.max(0, Math.floor((value ?? 0) / 1000));
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  return `${days}d ${hours}h ${minutes}m`;
+};
 
 const tabs = [
   { key: 'overview', label: 'Overview', icon: Gauge },
@@ -82,6 +93,14 @@ export function AdminDashboard() {
   const [transactionAnalytics, setTransactionAnalytics] = useState<AdminTransactionAnalyticsDTO | null>(null);
   const [userAnalytics, setUserAnalytics] = useState<AdminUserAnalyticsDTO | null>(null);
   const [financialHealth, setFinancialHealth] = useState<AdminFinancialHealthDTO | null>(null);
+  const [systemHealth, setSystemHealth] = useState<SystemHealthDTO | null>(null);
+  const [auditLogs, setAuditLogs] = useState<Array<{
+    id: string;
+    actorEmail?: string | null;
+    actionType: string;
+    description: string;
+    createdAt: string;
+  }>>([]);
   const [users, setUsers] = useState<UserDTO[]>([]);
   const [wallets, setWallets] = useState<Array<WalletType & { frozen?: boolean }>>([]);
   const [transactions, setTransactions] = useState<Array<{
@@ -269,11 +288,13 @@ export function AdminDashboard() {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [overviewData, transData, userData, healthData, usersData, walletsData, transactionsData] = await Promise.all([
+      const [overviewData, transData, userData, healthData, systemHealthData, auditData, usersData, walletsData, transactionsData] = await Promise.all([
         getAdminOverview(),
         getAdminTransactionAnalytics({ from: dateFrom || undefined, to: dateTo || undefined }),
         getAdminUserAnalytics(),
         getAdminFinancialHealth(),
+        getSystemHealth(),
+        getAdminAuditLogs(0, 10),
         getAdminUsers(usersPage, 10, usersSearch || undefined),
         getAdminWallets(walletsPage, walletsPerPage),
         getTransactions(transactionsPage, 10),
@@ -283,6 +304,8 @@ export function AdminDashboard() {
       setTransactionAnalytics(transData.data);
       setUserAnalytics(userData.data);
       setFinancialHealth(healthData.data);
+      setSystemHealth(systemHealthData.data);
+      setAuditLogs(auditData.data.content ?? []);
       setUsers(usersData.data.content);
       setWallets((walletsData.data.content ?? []).map((wallet) => ({ ...wallet, frozen: Boolean(wallet.frozen) })));
       setTransactions((transactionsData.data.content ?? []).map((item) => ({
@@ -1046,18 +1069,18 @@ export function AdminDashboard() {
                 <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
                   <h3 className="mb-4 text-[1.45rem] font-bold leading-tight tracking-[-0.04em] text-slate-900 sm:text-[1.6rem]">Recent activity</h3>
                   <div className="space-y-3">
-                    {users.slice(0, 6).map((user) => (
-                      <div key={user.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    {auditLogs.length ? auditLogs.map((item) => (
+                      <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                         <div>
-                          <p className="font-semibold text-slate-900">{user.fullName || user.email}</p>
-                          <p className="text-xs text-slate-500">{user.email}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs font-medium text-slate-700">{user.role}</p>
-                          <p className="text-xs text-slate-500">{user.active ? 'Active' : 'Locked'}</p>
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="font-semibold text-slate-900">{item.actionType}</p>
+                            <p className="shrink-0 text-xs text-slate-500">{new Date(item.createdAt).toLocaleString()}</p>
+                          </div>
+                          <p className="mt-1 text-sm text-slate-600">{item.description}</p>
+                          <p className="mt-1 text-xs text-slate-500">{item.actorEmail ?? 'System action'}</p>
                         </div>
                       </div>
-                    ))}
+                    )) : <p className="text-slate-500">No activity data yet.</p>}
                   </div>
                 </div>
 
@@ -1083,6 +1106,41 @@ export function AdminDashboard() {
 
             {activeTab === 'health' && (
               <div className="space-y-6">
+                <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">System status</p>
+                      <h3 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-900">
+                        {systemHealth?.status ?? 'Unavailable'}
+                      </h3>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {systemHealth?.database.message ?? 'System health data is not available.'}
+                      </p>
+                    </div>
+                    <span className={`inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-bold ${
+                      systemHealth?.status === 'UP' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      {systemHealth?.database.status ?? 'UNKNOWN'}
+                    </span>
+                  </div>
+                  <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-2xl bg-slate-50 p-4">
+                      <p className="text-xs text-slate-500">Uptime</p>
+                      <p className="mt-1 font-bold text-slate-900">{formatUptime(systemHealth?.uptime)}</p>
+                    </div>
+                    <div className="rounded-2xl bg-slate-50 p-4">
+                      <p className="text-xs text-slate-500">Memory used</p>
+                      <p className="mt-1 font-bold text-slate-900">
+                        {formatBytes((systemHealth?.totalMemory ?? 0) - (systemHealth?.freeMemory ?? 0))} / {formatBytes(systemHealth?.totalMemory)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl bg-slate-50 p-4">
+                      <p className="text-xs text-slate-500">Database response</p>
+                      <p className="mt-1 font-bold text-slate-900">{systemHealth?.database.responseTime ?? 0} ms</p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                   {healthCards.map(({ label, value, icon: Icon, tone }) => (
                     <div key={label} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
