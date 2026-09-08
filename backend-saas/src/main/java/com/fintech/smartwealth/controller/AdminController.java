@@ -88,6 +88,32 @@ public class AdminController {
         adminService.deleteUser(id);
     }
 
+    // ==================== WALLET MANAGEMENT ====================
+
+    @GetMapping("/wallets")
+    public Page<WalletResponse> getWallets(
+            @PageableDefault(size = 20, sort = "name") Pageable pageable) {
+        return adminService.getWallets(pageable);
+    }
+
+    @PostMapping("/wallets/{id}/freeze")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void freezeWallet(@PathVariable UUID id) {
+        adminService.setWalletFrozen(id, true);
+    }
+
+    @PostMapping("/wallets/{id}/unfreeze")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void unfreezeWallet(@PathVariable UUID id) {
+        adminService.setWalletFrozen(id, false);
+    }
+
+    @DeleteMapping("/wallets/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteWallet(@PathVariable UUID id) {
+        adminService.deleteWallet(id);
+    }
+
     // ==================== SYSTEM OVERVIEW ====================
 
     /**

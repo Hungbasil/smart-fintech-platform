@@ -8,15 +8,17 @@ public class WalletResponse {
     private String name;
     private BigDecimal balance;
     private UUID userId;
+    private boolean frozen;
 
     public WalletResponse() {
     }
 
-    public WalletResponse(UUID id, String name, BigDecimal balance, UUID userId) {
+    public WalletResponse(UUID id, String name, BigDecimal balance, UUID userId, boolean frozen) {
         this.id = id;
         this.name = name;
         this.balance = balance;
         this.userId = userId;
+        this.frozen = frozen;
     }
 
     public UUID getId() {
@@ -49,5 +51,13 @@ public class WalletResponse {
 
     public void setUserId(UUID userId) {
         this.userId = userId;
+    }
+
+    public boolean isFrozen() {
+        return frozen;
+    }
+
+    public void setFrozen(boolean frozen) {
+        this.frozen = frozen;
     }
 }

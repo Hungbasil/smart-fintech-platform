@@ -132,6 +132,40 @@ class AuthControllerTest {
     }
 
     @Test
+    void adminEndpointShouldRejectUnauthenticatedRequests() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/users"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void adminEndpointShouldRejectRegularUsers() throws Exception {
+        String email = "regular-admin-check-" + UUID.randomUUID() + "@example.com";
+        User user = new User();
+        user.setFullName("Regular User");
+        user.setEmail(email);
+        user.setPassword(passwordEncoder.encode("Password123"));
+        user.setActive(true);
+        user.setRole(com.fintech.smartwealth.entity.Role.USER);
+        userRepository.save(user);
+
+        String loginPayload = """
+                {
+                  "email": "%s",
+                  "password": "Password123"
+                }
+                """.formatted(email);
+        String token = objectMapper.readTree(mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(loginPayload))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString()).get("token").asText();
+
+        mockMvc.perform(get("/api/v1/admin/users")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void changePasswordShouldInvalidateRefreshSessions() throws Exception {
         String email = "change-password-" + UUID.randomUUID() + "@example.com";
         User user = new User();

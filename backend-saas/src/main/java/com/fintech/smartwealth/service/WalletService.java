@@ -93,6 +93,6 @@ public class WalletService {
     }
 
     private WalletResponse toResponse(Wallet wallet) {
-        return new WalletResponse(wallet.getId(), wallet.getName(), wallet.getBalance(), wallet.getUser().getId());
+        return new WalletResponse(wallet.getId(), wallet.getName(), wallet.getBalance(), wallet.getUser().getId(), wallet.isFrozen());
     }
 }

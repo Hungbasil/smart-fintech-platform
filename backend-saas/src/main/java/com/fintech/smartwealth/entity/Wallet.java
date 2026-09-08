@@ -37,6 +37,9 @@ public class Wallet implements Persistable<UUID> {
     @Column(precision = 19, scale = 2, nullable = false)
     private BigDecimal balance;
 
+    @Column(nullable = false)
+    private boolean frozen = false;
+
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User user;

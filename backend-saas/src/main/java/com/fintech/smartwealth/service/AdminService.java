@@ -154,6 +154,31 @@ public class AdminService {
         auditService.logAdminAction("DELETE_USER", "User " + user.getEmail() + " deleted by admin", id.toString());
     }
 
+    public Page<WalletResponse> getWallets(Pageable pageable) {
+        return walletRepository.findAll(pageable).map(wallet -> new WalletResponse(
+                wallet.getId(), wallet.getName(), wallet.getBalance(), wallet.getUser().getId(), wallet.isFrozen()));
+    }
+
+    public void setWalletFrozen(UUID id, boolean frozen) {
+        Wallet wallet = walletRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found"));
+        wallet.setFrozen(frozen);
+        walletRepository.save(wallet);
+        auditService.logAdminAction(frozen ? "FREEZE_WALLET" : "UNFREEZE_WALLET",
+                "Wallet " + wallet.getName() + (frozen ? " frozen" : " unfrozen") + " by admin", id.toString());
+    }
+
+    public void deleteWallet(UUID id) {
+        Wallet wallet = walletRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found"));
+        if (transactionRepository.existsByWalletId(id) || recurringTransactionRepository.existsByWalletId(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Cannot delete wallet because it is linked to transactions or recurring transactions");
+        }
+        walletRepository.delete(wallet);
+        auditService.logAdminAction("DELETE_WALLET", "Wallet " + wallet.getName() + " deleted by admin", id.toString());
+    }
+
     // ==================== SYSTEM OVERVIEW ====================
 
     public AdminOverviewDTO getOverview() {
