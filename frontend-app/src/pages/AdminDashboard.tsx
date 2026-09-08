@@ -43,7 +43,7 @@ import {
   getAdminUserAnalytics,
   getAdminFinancialHealth,
   getAdminUsers,
-  getWallets,
+  getAdminWallets,
   getTransactions,
   createWallet,
   deleteTransaction,
@@ -275,7 +275,7 @@ export function AdminDashboard() {
         getAdminUserAnalytics(),
         getAdminFinancialHealth(),
         getAdminUsers(usersPage, 10, usersSearch || undefined),
-        getWallets(),
+        getAdminWallets(walletsPage, walletsPerPage),
         getTransactions(transactionsPage, 10),
       ]);
 
@@ -284,7 +284,7 @@ export function AdminDashboard() {
       setUserAnalytics(userData.data);
       setFinancialHealth(healthData.data);
       setUsers(usersData.data.content);
-      setWallets((walletsData.data ?? []).map((wallet) => ({ ...wallet, frozen: Boolean((wallet as any).frozen) })));
+      setWallets((walletsData.data.content ?? []).map((wallet) => ({ ...wallet, frozen: Boolean(wallet.frozen) })));
       setTransactions((transactionsData.data.content ?? []).map((item) => ({
         ...item,
       })));
@@ -411,14 +411,14 @@ export function AdminDashboard() {
           </nav>
         </aside>
 
-        <main className="flex-1 bg-transparent">
+        <main className="min-w-0 flex-1 bg-transparent">
           <div className="rounded-[28px] border border-slate-200/80 bg-white/95 p-4 shadow-[0_18px_38px_rgba(15,23,42,0.04)] backdrop-blur-sm sm:p-5">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-600">Admin dashboard</p>
                 <h2 className="mt-2 text-[2rem] font-black leading-[1.08] tracking-[-0.06em] text-slate-900 sm:text-[2.3rem]">Operations overview</h2>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <button className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 transition-all duration-200 hover:-translate-y-0.5 hover:border-sky-300 hover:text-sky-700 hover:shadow-[0_8px_18px_rgba(29,78,216,0.12)]">
                   <Bell size={18} />
                 </button>
@@ -437,6 +437,20 @@ export function AdminDashboard() {
               </div>
             </div>
           </div>
+
+          <nav aria-label="Admin sections" className="mt-3 flex gap-2 overflow-x-auto rounded-2xl border border-slate-200/80 bg-white/95 p-2 shadow-sm lg:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {tabs.map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => { setActiveTab(key); setUsersPage(0); }}
+                className={`flex min-w-max shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold transition ${activeTab === key ? 'bg-[#0f172a] text-white' : 'text-slate-600 hover:bg-sky-50 hover:text-slate-900'}`}
+              >
+                <Icon size={14} />
+                {label}
+              </button>
+            ))}
+          </nav>
 
           <div className="space-y-6 py-6">
 

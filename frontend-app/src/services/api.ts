@@ -391,10 +391,11 @@ export interface DatabaseHealthDTO {
 export interface SystemHealthDTO {
   status: string;
   timestamp: string;
-  databaseHealth: DatabaseHealthDTO;
+  database: DatabaseHealthDTO;
+  applicationVersion: string;
   uptime: number;
-  memoryUsage: number;
-  cpuUsage: number;
+  totalMemory: number;
+  freeMemory: number;
 }
 
 export const getSystemHealth = () => api.get<SystemHealthDTO>('/admin/health');
