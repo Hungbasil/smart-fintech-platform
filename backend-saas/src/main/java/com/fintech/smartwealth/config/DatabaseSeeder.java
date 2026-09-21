@@ -104,23 +104,6 @@ public class DatabaseSeeder implements CommandLineRunner {
         log.info("Transactions imported: {}", transactionCount);
     }
 
-    private void ensureDefaultAdminUser() {
-        String adminEmail = "admin@smartfin.com";
-        userRepository.findByEmail(adminEmail).ifPresentOrElse(
-                user -> log.info("Default admin exists: {}", adminEmail),
-                () -> {
-                    User admin = new User();
-                    admin.setFullName("System Administrator");
-                    admin.setEmail(adminEmail);
-                    admin.setPassword(passwordEncoder.encode("Admin123!"));
-                    admin.setRole(Role.ADMIN);
-                    admin.setActive(true);
-                    userRepository.save(admin);
-                    log.info("Created default admin account: {}", adminEmail);
-                }
-        );
-    }
-
     private int seedUsersAndWallets(Path file) throws IOException {
         Map<UUID, User> users = new LinkedHashMap<>();
         PasswordEncoder encoder = passwordEncoder == null ? new BCryptPasswordEncoder() : passwordEncoder;
