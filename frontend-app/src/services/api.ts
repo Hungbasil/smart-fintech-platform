@@ -1,6 +1,7 @@
-import axios, { AxiosInstance } from 'axios';
+import axios, { type AxiosInstance } from 'axios';
+import { toast } from './notifications';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api/v1';
 
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -10,28 +11,449 @@ const api: AxiosInstance = axios.create({
   },
 });
 
-// Request interceptor
+export interface TransferRequest {
+  fromWalletId: string;
+  toWalletId: string;
+  amount: number;
+  description: string;
+  transactionDate: string;
+}
+
+export const transferFunds = (request: TransferRequest) =>
+  api.post('/transactions/transfer', request);
+
+export interface WalletRequest {
+  name: string;
+  balance: number;
+}
+
+export const createWallet = (request: WalletRequest) => api.post<Wallet>('/wallets', request);
+export const updateWallet = (id: string, request: WalletRequest) => api.put(`/wallets/${id}`, request);
+export const deleteWallet = (id: string) => api.delete(`/wallets/${id}`);
+
+export const getTransactions = (page = 0, size = 10, filters?: Record<string, string | number | undefined>) =>
+  api.get<{ content: any[]; totalElements: number; totalPages: number }>('/transactions', {
+    params: { page, size, ...filters },
+  });
+
+export const createTransaction = (request: Record<string, unknown>) => api.post('/transactions', request);
+export const deleteTransaction = (id: string) => api.delete(`/transactions/${id}`);
+
+export interface NotificationItem {
+  id: string;
+  message: string;
+  type: string;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface NotificationPreferences {
+  budgetEnabled: boolean;
+  debtEnabled: boolean;
+  recurringEnabled: boolean;
+}
+
+export const getNotifications = (page = 0, size = 30) =>
+  api.get<{ content: NotificationItem[]; totalElements: number }>('/notifications', { params: { page, size } });
+export const getNotificationPreferences = () => api.get<NotificationPreferences>('/notifications/preferences');
+export const updateNotificationPreferences = (preferences: NotificationPreferences) =>
+  api.put<NotificationPreferences>('/notifications/preferences', preferences);
+export const getUnreadNotificationCount = () => api.get<number>('/notifications/unread-count');
+export const markNotificationAsRead = (id: string) => api.patch(`/notifications/${id}/read`);
+export const markAllNotificationsAsRead = () => api.patch('/notifications/read-all');
+export const deleteNotification = (id: string) => api.delete(`/notifications/${id}`);
+
+export const updateRecurringTransaction = (id: string, request: object) => api.put(`/recurring-transactions/${id}`, request);
+
+export interface OcrResult {
+  amount: number;
+  date: string;
+}
+
+export const scanReceipt = (file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return api.post<OcrResult>('/transactions/ocr', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 180000,
+  });
+};
+
+export interface VoiceTransactionRequest {
+  text: string;
+  walletId: string;
+  categoryId: string;
+  transactionDate: string;
+}
+
+export const createVoiceTransaction = (request: VoiceTransactionRequest) =>
+  api.post('/ai/voice-to-transaction', request);
+
+export interface BudgetRequest {
+  categoryId: string;
+  amount: number;
+  month?: number;
+  year?: number;
+}
+
+export const getBudgets = () => api.get('/budgets');
+export const saveBudget = (request: BudgetRequest) => api.post('/budgets', request);
+export const deleteBudget = (id: string) => api.delete(`/budgets/${id}`);
+
+export interface SavingGoalRequest {
+  name: string;
+  targetAmount: number;
+  deadline?: string;
+}
+
+export interface AddSavingGoalFundsRequest {
+  amount: number;
+}
+
+export interface SavingGoal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  deadline: string | null;
+  requiredMonthlyAmount: number;
+  projectedCompletionDate: string | null;
+  monthlyContributions: Array<{ month: string; amount: number }>;
+}
+
+export const getSavingGoals = () => api.get<SavingGoal[]>('/saving-goals');
+export const createSavingGoal = (request: SavingGoalRequest) => api.post<SavingGoal>('/saving-goals', request);
+export const updateSavingGoal = (id: string, request: SavingGoalRequest) => api.put<SavingGoal>(`/saving-goals/${id}`, request);
+export const deleteSavingGoal = (id: string) => api.delete(`/saving-goals/${id}`);
+export const addSavingGoalFunds = (id: string, request: AddSavingGoalFundsRequest) => api.post<SavingGoal>(`/saving-goals/${id}/add-funds`, request);
+
+export type DebtType = 'LEND' | 'BORROW';
+export type DebtStatus = 'PENDING' | 'SETTLED';
+
+export interface Debt {
+  id: string;
+  counterpartyName: string;
+  amount: number;
+  type: DebtType;
+  status: DebtStatus;
+  dueDate: string | null;
+  description: string | null;
+}
+
+export interface DebtRequest {
+  counterpartyName: string;
+  amount: number;
+  type: DebtType;
+  dueDate?: string;
+  description?: string;
+}
+
+export const getDebts = () => api.get<Debt[]>('/debts');
+export const createDebt = (request: DebtRequest) => api.post<Debt>('/debts', request);
+export const updateDebt = (id: string, request: DebtRequest) => api.put<Debt>(`/debts/${id}`, request);
+export const deleteDebt = (id: string) => api.delete(`/debts/${id}`);
+export const settleDebt = (id: string, walletId: string) => api.post<Debt>(`/debts/${id}/settle`, { walletId });
+
+export interface Wallet { id: string; name: string; balance: number; }
+export interface CalendarEvent { id: string; title: string; date: string; amount: number; type: 'DEBT_PAYABLE' | 'DEBT_RECEIVABLE' | 'SUBSCRIPTION'; }
+export const getWallets = () => api.get<Wallet[]>('/wallets');
+export const getDebtCalendar = () => api.get<CalendarEvent[]>('/calendar/debts');
+
+export interface AnalyticsQuery {
+  [key: string]: string | undefined;
+  walletId?: string;
+  categoryId?: string;
+  type?: string;
+  fromDate?: string;
+  toDate?: string;
+}
+
+export interface AnalyticsSummary {
+  income: number;
+  expense: number;
+  net: number;
+  transactionCount: number;
+}
+
+export interface CategorySpending {
+  category: string;
+  amount: number;
+}
+
+export interface MonthlyTrend {
+  month: string;
+  income: number;
+  expense: number;
+}
+
+export const getAnalyticsSummary = (query?: AnalyticsQuery) =>
+  api.get<AnalyticsSummary>('/analytics/summary', { params: query });
+
+export const getAnalyticsCategories = (query?: AnalyticsQuery) =>
+  api.get<CategorySpending[]>('/analytics/categories', { params: query });
+
+export const getAnalyticsMonthly = (query?: AnalyticsQuery) =>
+  api.get<MonthlyTrend[]>('/analytics/monthly', { params: query });
+
+export interface PredictiveHistoricalExpense {
+  month: string;
+  amount: number;
+}
+
+export interface PredictiveAnalytics {
+  predictedAmount: number;
+  predictedIncome: number;
+  currentBalance: number;
+  projectedBalance: number;
+  historicalData: PredictiveHistoricalExpense[];
+  trend: 'INCREASING' | 'DECREASING' | 'STABLE';
+}
+
+export const getPredictiveAnalytics = () => api.get<PredictiveAnalytics>('/analytics/predict');
+
+export interface Investment {
+  id: string;
+  coinSymbol: string;
+  quantity: number;
+  buyPrice: number;
+  currentPrice: number;
+  profitLoss: number;
+  profitLossPercentage: number;
+}
+
+export interface InvestmentRequest {
+  coinSymbol: string;
+  quantity: number;
+  buyPrice: number;
+}
+
+export const getInvestments = () => api.get<Investment[]>('/investments');
+export const createInvestment = (request: InvestmentRequest) => api.post<Investment>('/investments', request);
+export const updateInvestment = (id: string, request: InvestmentRequest) => api.put<Investment>(`/investments/${id}`, request);
+export const deleteInvestment = (id: string) => api.delete(`/investments/${id}`);
+
+export interface MarketPrice {
+  coinSymbol: string;
+  price: number;
+}
+
+export const getMarketPrices = (symbols: string[]) =>
+  api.get<MarketPrice[]>('/investments/market', { params: { symbols: symbols.join(',') } });
+
+export interface MarketCandle {
+  openTime: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export const getMarketCandles = (symbol: string, interval = '1h', limit = 48) =>
+  api.get<MarketCandle[]>('/investments/market/klines', { params: { symbol, interval, limit } });
+
+export interface AiChatRequest {
+  message: string;
+  image?: string;
+}
+
+export interface AiAction { type: string; label: string; path: string; data: Record<string, unknown>; }
+export interface AiChatResponse { message: string; actions: AiAction[]; sources: string[]; updatedAt: string; }
+export interface AiInsightsResponse {
+  headline: string;
+  suggestions: string[];
+  budgetRecommendations: Array<{ categoryId: string; categoryName: string; suggestedAmount: number; reason: string }>;
+  anomalies: Array<{ description: string; amount: number; explanation: string }>;
+  actions: AiAction[];
+  sources: string[];
+  updatedAt: string;
+}
+
+export const askAi = (request: AiChatRequest) => api.post<AiChatResponse>('/ai/chat', request);
+export const getAiInsights = () => api.get<AiInsightsResponse>('/ai/insights');
+
+// ==================== ADMIN ENDPOINTS ====================
+
+export interface UserDTO {
+  id: string;
+  email: string;
+  fullName: string;
+  role: string;
+  active: boolean;
+  createdAt: string | null;
+  lastLogin: string | null;
+}
+
+export interface AdminOverviewDTO {
+  totalUsers: number;
+  totalWallets: number;
+  totalTransactions: number;
+  totalBalance: number;
+  monthlySpent: number;
+  monthlyIncome: number;
+  newUsersThisMonth: number;
+  activeUsersToday: number;
+}
+
+export interface AdminTransactionAnalyticsDTO {
+  categorySpending: { [key: string]: number };
+  walletSpending: { [key: string]: number };
+  largestTransactions: Array<{
+    id: string;
+    amount: number;
+    description: string;
+    transactionDate: string;
+    walletId: string;
+    categoryId: string;
+    type: string;
+  }>;
+  dailyTransactionCount: { [key: string]: number };
+  totalTransactionCount: number;
+}
+
+export interface AdminUserAnalyticsDTO {
+  totalUsers: number;
+  activeUsersThisMonth: number;
+  newUsersThisMonth: number;
+  dailyUserRegistration: { [key: string]: number };
+  avgWalletsPerUser: number;
+  avgTransactionsPerUser: number;
+}
+
+export interface AdminFinancialHealthDTO {
+  totalBorrowed: number;
+  totalLent: number;
+  pendingDebtsCount: number;
+  activeRecurringTransactions: number;
+  activeSavingGoals: number;
+  savingGoalsProgress: number;
+  usersBalanceRange0To1M: number;
+  usersBalanceRange1MTo10M: number;
+  usersBalanceRangeAbove10M: number;
+}
+
+export interface RoleChangeRequest {
+  role: string;
+}
+
+// Admin User Management
+export const getAdminUsers = (page = 0, size = 10, search?: string) =>
+  api.get<{ content: UserDTO[]; totalElements: number; totalPages: number }>('/admin/users', {
+    params: { page, size, ...(search && { search }) },
+  });
+
+export const getAdminUserDetail = (id: string) => api.get<UserDTO>(`/admin/users/${id}`);
+
+export const updateAdminUser = (id: string, data: { fullName: string; email: string }) => api.put<UserDTO>(`/admin/users/${id}`, data);
+
+export const lockAdminUser = (id: string) => api.post(`/admin/users/${id}/lock`, {});
+
+export const unlockAdminUser = (id: string) => api.post(`/admin/users/${id}/unlock`, {});
+
+export const deleteAdminUser = (id: string) => api.delete(`/admin/users/${id}`);
+
+export const changeAdminUserRole = (id: string, request: RoleChangeRequest) =>
+  api.post(`/admin/users/${id}/role`, request);
+
+// Admin Wallet Management
+export const freezeAdminWallet = (id: string) => api.post(`/admin/wallets/${id}/freeze`, {});
+
+export const unfreezeAdminWallet = (id: string) => api.post(`/admin/wallets/${id}/unfreeze`, {});
+
+export const deleteAdminWallet = (id: string) => api.delete(`/admin/wallets/${id}`);
+
+export const getAdminWallets = (page = 0, size = 10) =>
+  api.get<{ content: Array<Wallet & { frozen?: boolean; ownerEmail?: string }>; totalElements: number; totalPages: number }>('/admin/wallets', {
+    params: { page, size },
+  });
+
+// Admin Analytics
+export const getAdminOverview = () => api.get<AdminOverviewDTO>('/admin/analytics/overview');
+
+export interface AdminAnalyticsQuery {
+  from?: string;
+  to?: string;
+}
+
+export const getAdminTransactionAnalytics = (query?: AdminAnalyticsQuery) =>
+  api.get<AdminTransactionAnalyticsDTO>('/admin/analytics/transactions', { params: query });
+
+export const getAdminUserAnalytics = () => api.get<AdminUserAnalyticsDTO>('/admin/analytics/users');
+
+export const getAdminFinancialHealth = () => api.get<AdminFinancialHealthDTO>('/admin/analytics/financial-health');
+
+// Admin System Health
+export interface DatabaseHealthDTO {
+  status: string;
+  message: string;
+  responseTime: number;
+}
+
+export interface SystemHealthDTO {
+  status: string;
+  timestamp: string;
+  database: DatabaseHealthDTO;
+  applicationVersion: string;
+  uptime: number;
+  totalMemory: number;
+  freeMemory: number;
+}
+
+export const getSystemHealth = () => api.get<SystemHealthDTO>('/admin/health');
+
+export interface AuditLogResponse {
+  id: string;
+  actorUserId?: string | null;
+  actorEmail?: string | null;
+  actionType: string;
+  description: string;
+  targetId?: string | null;
+  ipAddress?: string | null;
+  createdAt: string;
+}
+
+export const getAdminAuditLogs = (page = 0, size = 10) =>
+  api.get<{ content: AuditLogResponse[]; totalElements: number; totalPages: number }>('/admin/audit-logs', {
+    params: { page, size },
+  });
+
 api.interceptors.request.use(
   (config) => {
-    // Add token to requests if it exists
     const token = localStorage.getItem('authToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const isAuthRequest = config.url?.startsWith('/auth/');
+    if (token && !isAuthRequest) {
+      config.headers.set('Authorization', `Bearer ${token}`);
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Handle unauthorized - redirect to login
+  async (error) => {
+    const isAuthRequest = error.config?.url?.startsWith('/auth/');
+    const serverMessage = error.response?.data?.message;
+    const hasInvalidToken = serverMessage === 'Invalid or expired token';
+    const hasStoredToken = Boolean(localStorage.getItem('authToken'));
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (error.response?.status === 401 && !isAuthRequest && refreshToken && !error.config?._refreshAttempted) {
+      try {
+        const refreshResponse = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
+        localStorage.setItem('authToken', refreshResponse.data.token);
+        if (refreshResponse.data.refreshToken) localStorage.setItem('refreshToken', refreshResponse.data.refreshToken);
+        error.config._refreshAttempted = true;
+        error.config.headers.set('Authorization', `Bearer ${refreshResponse.data.token}`);
+        return api.request(error.config);
+      } catch {
+        localStorage.removeItem('refreshToken');
+      }
+    }
+    if (error.response?.status === 401 && !isAuthRequest && (hasInvalidToken || !hasStoredToken)) {
       localStorage.removeItem('authToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('authUser');
+      toast.error('Your session has expired. Please sign in again.');
       window.location.href = '/login';
     }
     return Promise.reject(error);
